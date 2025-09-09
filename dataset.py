@@ -1,40 +1,5 @@
 import heapq
-import uuid
-from enum import Enum
-
-
-class State(Enum):
-    PENDING = 'pending'
-    READY = 'ready'
-    QUEUED = 'queued'
-    PREFILL = 0
-    DECODE = 'decode'
-    COMPLETED = 'completed'
-
-
-class Request:
-    def __init__(self, prompt_len, response_len, request_timestamp):
-        self.id = uuid.uuid4()
-        self.prompt_len = prompt_len
-        self.response_len = response_len
-        self.request_timestamp = request_timestamp
-        self.response_timestamp = None
-        self.state = State.PENDING
-
-    def __lt__(self, other):
-        return self.request_timestamp < other.request_timestamp
-
-    def to_request_view(self):
-        return RequestView(self)
-
-
-class RequestView:
-    def __init__(self, request):
-        self.id = request.id
-        self.prompt_len = request.prompt_len
-        self.request_timestamp = request.request_timestamp
-        self.state = request.state
-
+from request import Request, RequestState
 
 class Dataset:
     def __init__(self):
@@ -50,7 +15,7 @@ class Dataset:
         ready_requests = []
         while self._pending_heap and self._pending_heap[0].request_timestamp <= timestamp:
             request = heapq.heappop(self._pending_heap)
-            request.state = State.READY
+            request.state = RequestState.READY
             ready_requests.append(request.to_request_view())
         return ready_requests
 
@@ -59,6 +24,13 @@ class Dataset:
 
     def complete_requests(self, completed_requests, timestamp):
         for request in completed_requests:
-            self._requests[request.id].state = State.COMPLETED
+            self._requests[request.id].state = RequestState.COMPLETED
             self._requests[request.id].response_timestamp = timestamp
         self._completed_requests_count += len(completed_requests)
+    
+    def show_results(self):
+        average_latency = sum(
+            request.response_timestamp - request.request_timestamp
+            for request in self._requests.values()
+        ) / len(self._requests)
+        print(f"Average Latency: {average_latency:.3f} time units")
