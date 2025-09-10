@@ -20,19 +20,15 @@ class Simulator:
             self._scheduler.queue(ready_data)
 
             # From Alladin paper page 4
-            # In default settings like vLLM [12] or split-phase inference, one batch can only contain prefill or decode. 
+            # In default settings like vLLM [12] or split-phase inference, one batch can only contain prefill or decode.
             wait_time, phase, scheduled_request_ids, preempted_request_ids = self._scheduler.decide()
             if wait_time != 0:
                 self._t += wait_time
                 continue
-
+            
             self._current_phase = phase
-            for id in scheduled_request_ids:
-                request = self._dataset._requests[id]
-                self._gpu.add_request(request)
-            for id in preempted_request_ids:
-                request = self._dataset._requests[id]
-                self._gpu.remove_request(request)
+            self._gpu.schedule_requests([self._dataset._requests[request_id] for request_id in scheduled_request_ids])
+            self._gpu.preempt_requests([self._dataset._requests[request_id] for request_id in preempted_request_ids], self._t)
 
             processing_time = self._gpu.start_step(self._current_phase)
 

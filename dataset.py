@@ -24,8 +24,8 @@ class Dataset:
 
     def complete_requests(self, completed_requests, timestamp):
         for request in completed_requests:
-            self._requests[request.id].state = RequestState.COMPLETED
-            self._requests[request.id].response_timestamp = timestamp
+            request.state = RequestState.COMPLETED
+            request.response_timestamp = timestamp
         self._completed_requests_count += len(completed_requests)
     
     def show_results(self):

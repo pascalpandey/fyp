@@ -1,8 +1,10 @@
+import numpy as np
 from loader.prompt_engineering_dataset import PromptEngineeringDatasetLoader
 from scheduler.fcfs import FCFSScheduler
 from simulator import Simulator
 from gpu import GPU, GPUView
 
+np.random.seed(42)
 
 DATA_PATH = './data/prompt_engineering_dataset.csv'
 DATA_SIZE = 1000
