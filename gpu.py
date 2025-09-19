@@ -1,6 +1,5 @@
-from dataset import RequestState
 from enum import Enum
-from request import VRAMUpdateType
+from request import RequestState, VRAMUpdateType
 
 
 class GPUPhase(Enum):
@@ -42,9 +41,9 @@ class GPU:
         self._vram = VRAM(vram_slots)
         self._requests = []
 
-    def schedule_requests(self, scheduled_requests):
+    def schedule_requests(self, scheduled_requests, timestamp):
         for scheduled_request in scheduled_requests:
-            scheduled_request.state = RequestState.PREFILL
+            scheduled_request.step(timestamp)
             self._requests.append(scheduled_request)
     
     def preempt_requests(self, preempted_requests, timestamp):
@@ -55,7 +54,7 @@ class GPU:
                 if scheduled_request.id == preempted_request.id:
                     reclaimed_slots += scheduled_request.get_current_vram_usage()
                     preempted_request = self._requests.pop(i)
-                    preempted_request.state = RequestState.READY
+                    preempted_request.reset_to_ready(timestamp)
                     found = True
                     break
             if not found:

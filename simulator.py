@@ -10,7 +10,7 @@ class Simulator:
         while True:
             if self._current_phase is not None:
                 completed_requests = self._gpu.end_previous_step(self._t, self._current_phase)
-                self._dataset.complete_requests(completed_requests, self._t)
+                self._dataset.increment_completed_requests(len(completed_requests))
                 if self._dataset.completed_all_requests():
                     break
         
@@ -27,7 +27,7 @@ class Simulator:
                 continue
             
             self._current_phase = phase
-            self._gpu.schedule_requests([self._dataset._requests[request_id] for request_id in scheduled_request_ids])
+            self._gpu.schedule_requests([self._dataset._requests[request_id] for request_id in scheduled_request_ids], self._t)
             self._gpu.preempt_requests([self._dataset._requests[request_id] for request_id in preempted_request_ids], self._t)
 
             processing_time = self._gpu.start_step(self._current_phase)

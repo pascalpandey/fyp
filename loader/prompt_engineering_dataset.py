@@ -1,6 +1,7 @@
 import csv
 import numpy as np
-from dataset import Request, Dataset
+from dataset import Dataset
+from request import Request
 
 
 class PromptEngineeringDatasetLoader:

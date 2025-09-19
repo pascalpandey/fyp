@@ -1,5 +1,4 @@
 import heapq
-from request import Request, RequestState
 
 class Dataset:
     def __init__(self):
@@ -15,18 +14,15 @@ class Dataset:
         ready_requests = []
         while self._pending_heap and self._pending_heap[0].request_timestamp <= timestamp:
             request = heapq.heappop(self._pending_heap)
-            request.state = RequestState.READY
+            request.step(None)
             ready_requests.append(request.to_request_view())
         return ready_requests
 
     def completed_all_requests(self):
         return self._completed_requests_count == len(self._requests)
 
-    def complete_requests(self, completed_requests, timestamp):
-        for request in completed_requests:
-            request.state = RequestState.COMPLETED
-            request.response_timestamp = timestamp
-        self._completed_requests_count += len(completed_requests)
+    def increment_completed_requests(self, completed_requests_count):
+        self._completed_requests_count += completed_requests_count
     
     def show_results(self):
         average_latency = sum(
