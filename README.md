@@ -2,9 +2,16 @@
 
 copy `https://www.kaggle.com/datasets/antrixsh/prompt-engineering-and-responses-dataset` to `./data`
 
+to setup
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+to run
+
+```bash
 python3 main.py
 ```

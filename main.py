@@ -7,9 +7,10 @@ from gpu import GPU, GPUView
 np.random.seed(42)
 
 DATA_PATH = './data/prompt_engineering_dataset.csv'
-DATA_SIZE = 1000
+DATA_SIZE = 100
 REQUEST_RATE = 1/50
-VRAM_SLOTS = 1000
+VRAM_SLOTS = 100
+RESULTS_PATH = './results'
 
 
 def main():
@@ -23,10 +24,8 @@ def main():
     simulator = Simulator(dataset, gpu, scheduler)
     simulator.run()
 
-    dataset.show_results()
-
-    # TODO: visualize vram usage
-    # gpu.visualize_history()
+    dataset.show_results(RESULTS_PATH)
+    gpu.visualize_history(RESULTS_PATH)
 
 
 if __name__ == "__main__":

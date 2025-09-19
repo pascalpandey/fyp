@@ -55,7 +55,7 @@ class Request:
         self.response_timestamp = None
         self.state = RequestState.PENDING
         self._decode_progress = None
-        self._history = {self.request_timestamp: RequestState.READY}
+        self.history = {self.request_timestamp: RequestState.READY}
 
     def __lt__(self, other):
         return self.request_timestamp < other.request_timestamp
@@ -73,24 +73,24 @@ class Request:
                 # param here is not accurate
                 self.state = RequestState.READY
             case RequestState.READY:
-                self.state = self._history[timestamp] = RequestState.PREFILL
+                self.state = self.history[timestamp] = RequestState.PREFILL
             case RequestState.PREFILL | RequestState.DECODE:
                 update_type, update_slots = _calc_end_step_vram_update(self)
                 if self.state == RequestState.PREFILL:
-                    self.state = self._history[timestamp] = RequestState.DECODE
+                    self.state = self.history[timestamp] = RequestState.DECODE
                     self._decode_progress = 0
                 elif self.state == RequestState.DECODE:
                     if self._decode_progress + 1 != self._response_len:
                         self._decode_progress += 1
                     else:
-                        self.state = self._history[timestamp] = RequestState.COMPLETED
+                        self.state = self.history[timestamp] = RequestState.COMPLETED
                         self.response_timestamp = timestamp
                 return update_type, update_slots
     
     def reset_to_ready(self, timestamp):
         if self.state not in [RequestState.PREFILL, RequestState.DECODE]:
             raise Exception(f"Request.reset_to_ready: cannot reset state to ready from {self.state}")
-        self.state = self._history[timestamp] = RequestState.READY
+        self.state = self.history[timestamp] = RequestState.READY
 
     def get_current_vram_usage(self):
         return _calc_current_vram_usage(self)

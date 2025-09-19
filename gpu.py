@@ -1,3 +1,6 @@
+import os
+import pandas as pd
+import plotly.express as px
 from enum import Enum
 from request import RequestState, VRAMUpdateType
 
@@ -34,6 +37,9 @@ class VRAM:
 
     def get_used_slots(self):
         return self._used_slots
+    
+    def get_usage_history(self):
+        return self._usage_history
 
 
 class GPU:
@@ -110,6 +116,26 @@ class GPU:
 
     def get_gpu_view(self):
         return GPUView(self)
+    
+    def visualize_history(self, results_path):
+        filename="vram_usage.html"
+        os.makedirs(results_path, exist_ok=True)
+
+        df = pd.DataFrame({
+            "Time": list(self._vram.get_usage_history().keys()),
+            "VRAM": list(self._vram.get_usage_history().values())
+        })
+
+        fig = px.line(df, x="Time", y="VRAM", markers=True, title="VRAM Usage Over Time")
+        fig.update_layout(
+            xaxis_title="Time",
+            yaxis_title="VRAM Usage",
+            hovermode="x unified"
+        )
+
+        html_path = os.path.join(results_path, filename)
+        fig.write_html(html_path)
+        print(f"Saved VRAM usage plot to {html_path}")
 
 
 class GPUView:
