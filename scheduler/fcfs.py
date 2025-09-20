@@ -26,7 +26,7 @@ class FCFSScheduler:
 
         preempted_requests_id = []
         while not self._gpu_view.is_valid_step(GPUPhase.DECODE):
-            request_view = self._gpu_view.request_views.pop(0)
+            request_view = self._gpu_view.request_views.pop()
             self._gpu_view.remaining_vram_slots += request_view.get_current_vram_usage()
             request_view.state = RequestState.READY
             preempted_requests_id.append(request_view.id)

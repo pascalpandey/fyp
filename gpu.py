@@ -18,10 +18,12 @@ class VRAM:
 
     def allocate(self, amount, timestamp):
         if amount > self._remaining_slots:
-            raise Exception(f"VRAM.allocate: VRAM slots exceeded, trying to allocate {amount} slots but only {self._remaining_slots} slots remain")
+            raise Exception(
+                f"VRAM.allocate: VRAM slots exceeded, trying to allocate {amount} slots but only {self._remaining_slots} slots remain")
         self._remaining_slots -= amount
         if self._remaining_slots < 0:
-            raise Exception("VRAM.allocate: VRAM remaining slots went negative")
+            raise Exception(
+                "VRAM.allocate: VRAM remaining slots went negative")
         self._used_slots += amount
         self._usage_history[timestamp] = self._used_slots
 
@@ -37,7 +39,7 @@ class VRAM:
 
     def get_used_slots(self):
         return self._used_slots
-    
+
     def get_usage_history(self):
         return self._usage_history
 
@@ -51,7 +53,7 @@ class GPU:
         for scheduled_request in scheduled_requests:
             scheduled_request.step(timestamp)
             self._requests.append(scheduled_request)
-    
+
     def preempt_requests(self, preempted_requests, timestamp):
         reclaimed_slots = 0
         for preempted_request in preempted_requests:
@@ -64,7 +66,8 @@ class GPU:
                     found = True
                     break
             if not found:
-                raise Exception("GPU.preempt_requests: request {request} not found in scheduled requests")
+                raise Exception(
+                    "GPU.preempt_requests: request {request} not found in scheduled requests")
         self._vram.free(reclaimed_slots, timestamp)
 
     # From Alladin paper page 4
@@ -116,9 +119,9 @@ class GPU:
 
     def get_gpu_view(self):
         return GPUView(self)
-    
+
     def visualize_history(self, results_path):
-        filename="vram_usage.html"
+        filename = "vram_usage.html"
         os.makedirs(results_path, exist_ok=True)
 
         df = pd.DataFrame({
@@ -126,7 +129,8 @@ class GPU:
             "VRAM": list(self._vram.get_usage_history().values())
         })
 
-        fig = px.line(df, x="Time", y="VRAM", markers=True, title="VRAM Usage Over Time")
+        fig = px.line(df, x="Time", y="VRAM", markers=True,
+                      title="VRAM Usage Over Time")
         fig.update_layout(
             xaxis_title="Time",
             yaxis_title="VRAM Usage",
