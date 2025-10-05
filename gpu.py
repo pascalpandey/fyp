@@ -74,16 +74,20 @@ class GPU:
     # t_prefill = k1 * num_tokens_in_batch + c1
     # t_decode = k2 * num_tokens_in_batch + c2 * size_of_batch + c3
     # for now assume c1 = c2 = c3 = 0, k1 = k2 = 1
-    def start_step(self, phase):
-        processing_time = 0
-        for request in self._requests:
-            if phase == GPUPhase.PREFILL and request.state == RequestState.PREFILL:
-                processing_time += request.get_start_step_processing_time()
+    # def start_step(self, phase):
+    #     processing_time = 0
+    #     for request in self._requests:
+    #         if phase == GPUPhase.PREFILL and request.state == RequestState.PREFILL:
+    #             processing_time += request.get_start_step_processing_time()
 
-            if phase == GPUPhase.DECODE and request.state == RequestState.DECODE:
-                processing_time += request.get_start_step_processing_time()
+    #         if phase == GPUPhase.DECODE and request.state == RequestState.DECODE:
+    #             processing_time += request.get_start_step_processing_time()
 
-        return processing_time
+    #     return processing_time
+    
+    # Assume one time unit for both prefill and decode
+    def start_step(self, _):
+        return 1
 
     # From Alladin paper page 4
     # kv_size = h * num_tokens + j
@@ -120,8 +124,8 @@ class GPU:
     def get_gpu_view(self):
         return GPUView(self)
 
-    def visualize_history(self, results_path):
-        filename = "vram_usage.html"
+    def visualize_history(self, results_path, scheduler_name):
+        filename = f"{scheduler_name}_vram_usage.html"
         os.makedirs(results_path, exist_ok=True)
 
         df = pd.DataFrame({
@@ -139,7 +143,7 @@ class GPU:
 
         html_path = os.path.join(results_path, filename)
         fig.write_html(html_path)
-        print(f"Saved VRAM usage plot to {html_path}")
+        print(f"Saved {scheduler_name} VRAM usage plot to {html_path}")
 
 
 class GPUView:

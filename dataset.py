@@ -28,16 +28,16 @@ class Dataset:
     def increment_completed_requests(self, completed_requests_count):
         self._completed_requests_count += completed_requests_count
 
-    def _show_average_latency(self):
+    def _show_average_latency(self, scheduler_name):
         average_latency = sum(
             request.response_timestamp - request.request_timestamp
             for request in self._requests.values()
         ) / len(self._requests)
-        print(f"Average Latency: {average_latency:.3f} time units")
+        print(f"Average Latency {scheduler_name}: {average_latency:.3f} time units")
 
-    def _visualize_request_history(self, results_path):
+    def _visualize_request_history(self, results_path, scheduler_name):
         os.makedirs(results_path, exist_ok=True)
-        html_path = os.path.join(results_path, "request_timeline.html")
+        html_path = os.path.join(results_path, f"{scheduler_name}_request_timeline.html")
 
         rows = []
         for i, req_key in enumerate(self._requests):
@@ -82,8 +82,8 @@ class Dataset:
         fig.show()
         fig.write_html(html_path)
 
-        print(f"Saved timeline visualization to {html_path}")
+        print(f"Saved {scheduler_name} timeline visualization to {html_path}")
 
-    def show_results(self, results_path):
-        self._show_average_latency()
-        self._visualize_request_history(results_path)
+    def show_results(self, results_path, scheduler_name):
+        self._show_average_latency(scheduler_name)
+        self._visualize_request_history(results_path, scheduler_name)

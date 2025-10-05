@@ -2,7 +2,7 @@ from gpu import GPUPhase
 from request import RequestState
 
 
-class FCFSScheduler:
+class FCFSBatchScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
         self._gpu_view = initial_gpu_view
