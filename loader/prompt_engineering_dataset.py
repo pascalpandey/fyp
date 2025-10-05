@@ -26,11 +26,12 @@ class PromptEngineeringDatasetLoader:
                     break
                 prompt_len = len(row['Prompt'].split(' '))
                 response_len = len(row['Response'].split(' '))
+                predicted_response_len = self._get_predicted_length(response_len)
                 data = Request(
                     prompt_len,
                     response_len,
                     self._request_times[i],
-                    self._get_predicted_length(response_len)
+                    predicted_response_len
                 )
                 dataset.add(data)
         return dataset

@@ -20,7 +20,7 @@ SCHEDULER_NAMES = [
     'fcfs_nonbatch',
     'fcfs_batch',
     'fcfs_dynamic_batch',
-    # 'fcfs_dynamic_batch_predict',
+    'fcfs_dynamic_batch_predict',
 ]
 SCHEDULER_DICT = {
     'fcfs_nonbatch': FCFSNonBatchScheduler,

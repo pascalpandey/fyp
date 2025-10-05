@@ -138,6 +138,9 @@ class RequestView:
 
     def get_current_vram_usage(self):
         return _calc_current_vram_usage(self)
+    
+    def get_total_predicted_vram_usage(self):
+        return self._prompt_len + self._predicted_response_len - 1
 
     # public access aliases, needed because common utility functions with Request uses
     # _prompt_len and _decode_progress

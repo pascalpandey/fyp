@@ -180,15 +180,24 @@ class GPUView:
 
     def is_valid_step(self, phase):
         vram_slots_required = 0
-        for request in self.request_views:
-            if phase == GPUPhase.PREFILL and request.process_stage == ProcessStage.PREFILL:
-                vram_slots_required += request.get_end_step_vram_update()[1]
+        for request_view in self.request_views:
+            if phase == GPUPhase.PREFILL and request_view.process_stage == ProcessStage.PREFILL:
+                vram_slots_required += request_view.get_end_step_vram_update()[1]
 
-            if phase == GPUPhase.DECODE and request.process_stage == ProcessStage.DECODE:
-                update_type, update_slots = request.get_end_step_vram_update()
+            if phase == GPUPhase.DECODE and request_view.process_stage == ProcessStage.DECODE:
+                update_type, update_slots = request_view.get_end_step_vram_update()
                 if update_type == VRAMUpdateType.ALLOCATE:
                     vram_slots_required += update_slots
 
         if vram_slots_required > self.remaining_vram_slots:
+            return False
+        return True
+    
+    def is_valid_step_with_predict(self, overcommit_factor):
+        vram_slots_required = 0
+        for request_view in self.request_views:
+            vram_slots_required += request_view.get_total_predicted_vram_usage()
+
+        if vram_slots_required > self.remaining_vram_slots * overcommit_factor:
             return False
         return True
