@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import plotly.express as px
 from enum import Enum
-from request import RequestState, VRAMUpdateType
+from request import VRAMUpdateType, ProcessStage, ProcessHistoryState
 
 
 class GPUPhase(Enum):
@@ -51,7 +51,7 @@ class GPU:
 
     def schedule_requests(self, scheduled_requests, timestamp):
         for scheduled_request in scheduled_requests:
-            scheduled_request.step(timestamp)
+            scheduled_request.step(timestamp) # READY to SCHEDULED
             self._requests.append(scheduled_request)
 
     def preempt_requests(self, preempted_requests, timestamp):
@@ -62,7 +62,7 @@ class GPU:
                 if scheduled_request.id == preempted_request.id:
                     reclaimed_slots += scheduled_request.get_current_vram_usage()
                     preempted_request = self._requests.pop(i)
-                    preempted_request.reset_to_ready(timestamp)
+                    preempted_request.preempt(timestamp)
                     found = True
                     break
             if not found:
@@ -74,19 +74,43 @@ class GPU:
     # t_prefill = k1 * num_tokens_in_batch + c1
     # t_decode = k2 * num_tokens_in_batch + c2 * size_of_batch + c3
     # for now assume c1 = c2 = c3 = 0, k1 = k2 = 1
-    # def start_step(self, phase):
+    # def start_step(self, timestamp, phase):
     #     processing_time = 0
     #     for request in self._requests:
-    #         if phase == GPUPhase.PREFILL and request.state == RequestState.PREFILL:
-    #             processing_time += request.get_start_step_processing_time()
+    #         if request.process_stage == ProcessStage.PREFILL:
+    #             if phase == GPUPhase.PREFILL:
+    #                 request.add_process_history(timestamp, ProcessHistoryState.PREFILL)
+    #             else:
+    #                 request.add_process_history(timestamp, ProcessHistoryState.IDLE)
 
-    #         if phase == GPUPhase.DECODE and request.state == RequestState.DECODE:
-    #             processing_time += request.get_start_step_processing_time()
+    #         elif request.process_stage == ProcessStage.DECODE:
+    #             if phase == GPUPhase.DECODE:
+    #                 request.add_process_history(timestamp, ProcessHistoryState.DECODE)
+    #             else:
+    #                 request.add_process_history(timestamp, ProcessHistoryState.IDLE)
 
+    #         if phase == GPUPhase.PREFILL and request.process_stage == ProcessStage.PREFILL:
+    #             processing_time += request.get_start_step_processing_time()
+    
+    #         if phase == GPUPhase.DECODE and request.process_stage == ProcessStage.DECODE:
+    #             processing_time += request.get_start_step_processing_time()
+    
     #     return processing_time
     
     # Assume one time unit for both prefill and decode
-    def start_step(self, _):
+    def start_step(self, timestamp, phase):
+        for request in self._requests:
+            if request.process_stage == ProcessStage.PREFILL:
+                if phase == GPUPhase.PREFILL:
+                    request.add_process_history(timestamp, ProcessHistoryState.PREFILL)
+                else:
+                    request.add_process_history(timestamp, ProcessHistoryState.IDLE)
+
+            elif request.process_stage == ProcessStage.DECODE:
+                if phase == GPUPhase.DECODE:
+                    request.add_process_history(timestamp, ProcessHistoryState.DECODE)
+                else:
+                    request.add_process_history(timestamp, ProcessHistoryState.IDLE)
         return 1
 
     # From Alladin paper page 4
@@ -97,16 +121,18 @@ class GPU:
         vram_slots_freed = 0
         completed_requests = []
         for i, request in enumerate(self._requests):
-            if phase == GPUPhase.PREFILL and request.state == RequestState.PREFILL:
-                vram_slots_allocated += request.step(timestamp)[1]
+            if request.process_stage == ProcessStage.PREFILL:
+                if phase == GPUPhase.PREFILL:
+                    vram_slots_allocated += request.step(timestamp)[1] # state stays SCHEDULED, process_stage to DECODE
 
-            if phase == GPUPhase.DECODE and request.state == RequestState.DECODE:
-                update_type, update_slots = request.step(timestamp)
-                if update_type == VRAMUpdateType.ALLOCATE:
-                    vram_slots_allocated += update_slots
-                else:
-                    vram_slots_freed += update_slots
-                    completed_requests.append(self._requests.pop(i))
+            elif request.process_stage == ProcessStage.DECODE:
+                if phase == GPUPhase.DECODE:
+                    update_type, update_slots = request.step(timestamp) # state stays SCHEDULED, process_stage stays DECODE or to COMPLETE
+                    if update_type == VRAMUpdateType.ALLOCATE:
+                        vram_slots_allocated += update_slots
+                    else:
+                        vram_slots_freed += update_slots
+                        completed_requests.append(self._requests.pop(i))
 
         self._vram.allocate(vram_slots_allocated, timestamp)
         self._vram.free(vram_slots_freed, timestamp)
@@ -155,10 +181,10 @@ class GPUView:
     def is_valid_step(self, phase):
         vram_slots_required = 0
         for request in self.request_views:
-            if phase == GPUPhase.PREFILL and request.state == RequestState.PREFILL:
+            if phase == GPUPhase.PREFILL and request.process_stage == ProcessStage.PREFILL:
                 vram_slots_required += request.get_end_step_vram_update()[1]
 
-            if phase == GPUPhase.DECODE and request.state == RequestState.DECODE:
+            if phase == GPUPhase.DECODE and request.process_stage == ProcessStage.DECODE:
                 update_type, update_slots = request.get_end_step_vram_update()
                 if update_type == VRAMUpdateType.ALLOCATE:
                     vram_slots_required += update_slots

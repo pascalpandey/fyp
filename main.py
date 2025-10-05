@@ -3,6 +3,8 @@ import copy
 from loader.prompt_engineering_dataset import PromptEngineeringDatasetLoader
 from scheduler.fcfs_batch import FCFSBatchScheduler
 from scheduler.fcfs_nonbatch import FCFSNonBatchScheduler
+from scheduler.fcfs_dyn_batch import FCFSDynamicBatchScheduler
+from scheduler.fcfs_dyn_batch_predict import FCFSDynamicBatchPredictScheduler
 from simulator import Simulator
 from gpu import GPU, GPUView
 
@@ -11,20 +13,29 @@ np.random.seed(42)
 DATA_PATH = './data/prompt_engineering_dataset.csv'
 DATA_SIZE = 100
 REQUEST_RATE = 1/5
+PREDICTED_LEN_STDEV = 0.3
 VRAM_SLOTS = 100
 RESULTS_PATH = './results'
-SCHEDULER_NAMES = 'fcfs_batch,fcfs_nonbatch'
+SCHEDULER_NAMES = [
+    'fcfs_nonbatch',
+    'fcfs_batch',
+    'fcfs_dynamic_batch',
+    # 'fcfs_dynamic_batch_predict',
+]
 SCHEDULER_DICT = {
+    'fcfs_nonbatch': FCFSNonBatchScheduler,
     'fcfs_batch': FCFSBatchScheduler,
-    'fcfs_nonbatch': FCFSNonBatchScheduler
+    'fcfs_dynamic_batch': FCFSDynamicBatchScheduler,
+    'fcfs_dynamic_batch_predict': FCFSDynamicBatchPredictScheduler
 }
 
 
 def main():
-    loader = PromptEngineeringDatasetLoader(DATA_PATH, DATA_SIZE, REQUEST_RATE)
+    loader = PromptEngineeringDatasetLoader(
+        DATA_PATH, DATA_SIZE, REQUEST_RATE, PREDICTED_LEN_STDEV)
     dataset = loader.load()
 
-    for scheduler_name in SCHEDULER_NAMES.split(','):
+    for scheduler_name in SCHEDULER_NAMES:
         dataset_copy = copy.deepcopy(dataset)
 
         gpu = GPU(VRAM_SLOTS)

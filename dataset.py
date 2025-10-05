@@ -18,7 +18,7 @@ class Dataset:
         ready_requests = []
         while self._pending_heap and self._pending_heap[0].request_timestamp <= timestamp:
             request = heapq.heappop(self._pending_heap)
-            request.step(None)
+            request.step() # PENDING to READY
             ready_requests.append(request.to_request_view())
         return ready_requests
 
@@ -42,12 +42,12 @@ class Dataset:
         rows = []
         for i, req_key in enumerate(self._requests):
             request = self._requests[req_key]
-            history_timestamps = sorted(request.history.keys())
+            history_timestamps = sorted(request.process_history.keys())
 
             for j in range(len(history_timestamps) - 1):
                 start = history_timestamps[j]
                 end = history_timestamps[j + 1]
-                state = request.history[start].value.lower()
+                state = request.process_history[start].value
 
                 rows.append({
                     "Task": f"Request {i}",
@@ -64,6 +64,7 @@ class Dataset:
                 "ready": "rgb(211,211,211)",
                 "prefill": "rgb(135,206,235)",
                 "decode": "rgb(255,165,0)",
+                "idle": "rgb(169,169,169)"
             },
             index_col='State',
             show_colorbar=True,

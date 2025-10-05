@@ -30,6 +30,6 @@ class Simulator:
             self._gpu.schedule_requests([self._dataset._requests[request_id] for request_id in scheduled_request_ids], self._t)
             self._gpu.preempt_requests([self._dataset._requests[request_id] for request_id in preempted_request_ids], self._t)
 
-            processing_time = self._gpu.start_step(self._current_phase)
+            processing_time = self._gpu.start_step(self._t, self._current_phase)
 
             self._t += processing_time
