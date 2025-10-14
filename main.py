@@ -13,7 +13,7 @@ np.random.seed(42)
 DATA_PATH = './data/prompt_engineering_dataset.csv'
 DATA_SIZE = 100
 REQUEST_RATE = 1/5
-PREDICTED_LEN_STDEV = 0.3
+PREDICTED_LEN_STDEV = 0.1
 VRAM_SLOTS = 100
 RESULTS_PATH = './results'
 SCHEDULER_NAMES = [
@@ -28,7 +28,7 @@ SCHEDULER_DICT = {
     'fcfs_dynamic_batch': FCFSDynamicBatchScheduler,
     'fcfs_dynamic_batch_predict': FCFSDynamicBatchPredictScheduler
 }
-
+SAVE_VISUALIZATIONS = True
 
 def main():
     loader = PromptEngineeringDatasetLoader(
@@ -45,9 +45,12 @@ def main():
         simulator = Simulator(dataset_copy, gpu, scheduler)
         simulator.run()
 
-        dataset_copy.show_results(RESULTS_PATH, scheduler_name)
-        gpu.visualize_history(RESULTS_PATH, scheduler_name)
+        dataset_copy.show_average_latency(scheduler_name)
+        if SAVE_VISUALIZATIONS:
+            dataset_copy.visualize_request_history(RESULTS_PATH, scheduler_name)
+            gpu.visualize_history(RESULTS_PATH, scheduler_name)
 
+        print() # newline
 
 if __name__ == "__main__":
     main()

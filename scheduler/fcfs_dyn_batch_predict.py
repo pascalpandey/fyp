@@ -6,7 +6,6 @@ class FCFSDynamicBatchPredictScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
         self._gpu_view = initial_gpu_view
-        self._overcommit_factor = 3
 
     def queue(self, request_views):
         self._queue.extend(request_views)
@@ -18,25 +17,18 @@ class FCFSDynamicBatchPredictScheduler:
 
         # try to schedule requests using the total predicted VRAM usage
         scheduled_request_ids = []
-        while self._gpu_view.is_valid_step_with_predict(self._overcommit_factor) and len(self._queue) > 0:
+        while self._gpu_view.is_valid_step_with_predict() and len(self._queue) > 0:
             request_view = self._queue.pop(0)
             request_view.state = RequestState.SCHEDULED
             request_view.process_stage = ProcessStage.PREFILL
             self._gpu_view.request_views.append(request_view)
             scheduled_request_ids.append(request_view.id)
-        if scheduled_request_ids and not self._gpu_view.is_valid_step_with_predict(self._overcommit_factor):
+        if scheduled_request_ids and not self._gpu_view.is_valid_step_with_predict():
             self._queue.insert(0, self._gpu_view.request_views.pop())
             scheduled_request_ids.pop()
         
-        # check if prefill is actually possible, remove scheduled requests if needed
+        # prioritize prefill, it can be better to decode if a request might be ending soon
         if scheduled_request_ids:
-            while not self._gpu_view.is_valid_step(GPUPhase.PREFILL):
-                request_view = self._gpu_view.request_views.pop()
-                self._gpu_view.remaining_vram_slots += request_view.get_current_vram_usage()
-                request_view.state = RequestState.READY
-                request_view.process_stage = None
-                scheduled_request_ids.remove(request_view.id)
-                self._queue.insert(0, request_view)
             return 0, GPUPhase.PREFILL, scheduled_request_ids, []
 
         preempted_requests_id = []

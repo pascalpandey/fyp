@@ -63,7 +63,7 @@ class Request:
         self.response_timestamp = None
         self.state = RequestState.PENDING
         self.process_stage = None
-        self._decode_progress = None
+        self._decode_progress = 0
         self.process_history = {
             self.request_timestamp: RequestState.READY}
 
@@ -131,7 +131,7 @@ class RequestView:
         self.state = request.state
         self.process_stage = request.process_stage
         self._decode_progress = request._decode_progress
-        self._predicted_response_len = request.predicted_response_len
+        self.predicted_response_len = request.predicted_response_len
 
     def get_end_step_vram_update(self):
         return _calc_end_step_vram_update(self)
@@ -140,7 +140,7 @@ class RequestView:
         return _calc_current_vram_usage(self)
     
     def get_total_predicted_vram_usage(self):
-        return self._prompt_len + self._predicted_response_len - 1
+        return self._prompt_len + self.predicted_response_len - 1
 
     # public access aliases, needed because common utility functions with Request uses
     # _prompt_len and _decode_progress

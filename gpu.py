@@ -51,7 +51,7 @@ class GPU:
 
     def schedule_requests(self, scheduled_requests, timestamp):
         for scheduled_request in scheduled_requests:
-            scheduled_request.step(timestamp) # READY to SCHEDULED
+            scheduled_request.step(timestamp)  # READY to SCHEDULED
             self._requests.append(scheduled_request)
 
     def preempt_requests(self, preempted_requests, timestamp):
@@ -91,26 +91,30 @@ class GPU:
 
     #         if phase == GPUPhase.PREFILL and request.process_stage == ProcessStage.PREFILL:
     #             processing_time += request.get_start_step_processing_time()
-    
+
     #         if phase == GPUPhase.DECODE and request.process_stage == ProcessStage.DECODE:
     #             processing_time += request.get_start_step_processing_time()
-    
+
     #     return processing_time
-    
+
     # Assume one time unit for both prefill and decode
     def start_step(self, timestamp, phase):
         for request in self._requests:
             if request.process_stage == ProcessStage.PREFILL:
                 if phase == GPUPhase.PREFILL:
-                    request.add_process_history(timestamp, ProcessHistoryState.PREFILL)
+                    request.add_process_history(
+                        timestamp, ProcessHistoryState.PREFILL)
                 else:
-                    request.add_process_history(timestamp, ProcessHistoryState.IDLE)
+                    request.add_process_history(
+                        timestamp, ProcessHistoryState.IDLE)
 
             elif request.process_stage == ProcessStage.DECODE:
                 if phase == GPUPhase.DECODE:
-                    request.add_process_history(timestamp, ProcessHistoryState.DECODE)
+                    request.add_process_history(
+                        timestamp, ProcessHistoryState.DECODE)
                 else:
-                    request.add_process_history(timestamp, ProcessHistoryState.IDLE)
+                    request.add_process_history(
+                        timestamp, ProcessHistoryState.IDLE)
         return 1
 
     # From Alladin paper page 4
@@ -123,11 +127,13 @@ class GPU:
         for i, request in enumerate(self._requests):
             if request.process_stage == ProcessStage.PREFILL:
                 if phase == GPUPhase.PREFILL:
-                    vram_slots_allocated += request.step(timestamp)[1] # state stays SCHEDULED, process_stage to DECODE
+                    # state stays SCHEDULED, process_stage to DECODE
+                    vram_slots_allocated += request.step(timestamp)[1]
 
             elif request.process_stage == ProcessStage.DECODE:
                 if phase == GPUPhase.DECODE:
-                    update_type, update_slots = request.step(timestamp) # state stays SCHEDULED, process_stage stays DECODE or to COMPLETE
+                    # state stays SCHEDULED, process_stage stays DECODE or to COMPLETE
+                    update_type, update_slots = request.step(timestamp)
                     if update_type == VRAMUpdateType.ALLOCATE:
                         vram_slots_allocated += update_slots
                     else:
@@ -177,6 +183,7 @@ class GPUView:
         self.used_vram_slots = gpu.get_used_vram_slots()
         self.remaining_vram_slots = gpu.get_remaining_vram_slots()
         self.request_views = gpu.get_request_views()
+        self.total_vram_slots = self.used_vram_slots + self.remaining_vram_slots
 
     def is_valid_step(self, phase):
         vram_slots_required = 0
@@ -192,12 +199,17 @@ class GPUView:
         if vram_slots_required > self.remaining_vram_slots:
             return False
         return True
-    
-    def is_valid_step_with_predict(self, overcommit_factor):
-        vram_slots_required = 0
-        for request_view in self.request_views:
-            vram_slots_required += request_view.get_total_predicted_vram_usage()
 
-        if vram_slots_required > self.remaining_vram_slots * overcommit_factor:
-            return False
+    def is_valid_step_with_predict(self):
+        sorted_by_remaining_tokens = sorted(
+            [x for x in self.request_views], key=lambda x: x.predicted_response_len - x.decode_progress - 1)
+        predicted_usage = self.used_vram_slots + \
+            sum([x.prompt_len for x in self.request_views if x.process_stage == ProcessStage.PREFILL])
+        for i, request_view in enumerate(sorted_by_remaining_tokens):
+            predicted_usage += max(1, request_view.predicted_response_len - request_view.decode_progress - 1) * \
+            (len(sorted_by_remaining_tokens) - i)
+            if predicted_usage > self.total_vram_slots:
+                return False
+            predicted_usage -= request_view.prompt_len + \
+                max(request_view.predicted_response_len - 1, request_view.decode_progress)
         return True

@@ -28,14 +28,14 @@ class Dataset:
     def increment_completed_requests(self, completed_requests_count):
         self._completed_requests_count += completed_requests_count
 
-    def _show_average_latency(self, scheduler_name):
+    def show_average_latency(self, scheduler_name):
         average_latency = sum(
             request.response_timestamp - request.request_timestamp
             for request in self._requests.values()
         ) / len(self._requests)
         print(f"Average Latency {scheduler_name}: {average_latency:.3f} time units")
 
-    def _visualize_request_history(self, results_path, scheduler_name):
+    def visualize_request_history(self, results_path, scheduler_name):
         os.makedirs(results_path, exist_ok=True)
         html_path = os.path.join(results_path, f"{scheduler_name}_request_timeline.html")
 
@@ -85,6 +85,3 @@ class Dataset:
 
         print(f"Saved {scheduler_name} timeline visualization to {html_path}")
 
-    def show_results(self, results_path, scheduler_name):
-        self._show_average_latency(scheduler_name)
-        self._visualize_request_history(results_path, scheduler_name)
