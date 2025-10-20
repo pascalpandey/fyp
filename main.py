@@ -5,6 +5,7 @@ from scheduler.fcfs_batch import FCFSBatchScheduler
 from scheduler.fcfs_nonbatch import FCFSNonBatchScheduler
 from scheduler.fcfs_dyn_batch import FCFSDynamicBatchScheduler
 from scheduler.fcfs_dyn_batch_predict import FCFSDynamicBatchPredictScheduler
+from scheduler.sjf_nonbatch import SJFNonBatchScheduler
 from simulator import Simulator
 from gpu import GPU, GPUView
 
@@ -21,12 +22,14 @@ SCHEDULER_NAMES = [
     'fcfs_batch',
     'fcfs_dynamic_batch',
     'fcfs_dynamic_batch_predict',
+    'sjf_nonbatch',
 ]
 SCHEDULER_DICT = {
     'fcfs_nonbatch': FCFSNonBatchScheduler,
     'fcfs_batch': FCFSBatchScheduler,
     'fcfs_dynamic_batch': FCFSDynamicBatchScheduler,
-    'fcfs_dynamic_batch_predict': FCFSDynamicBatchPredictScheduler
+    'fcfs_dynamic_batch_predict': FCFSDynamicBatchPredictScheduler,
+    'sjf_nonbatch': SJFNonBatchScheduler
 }
 SAVE_VISUALIZATIONS = True
 
