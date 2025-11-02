@@ -64,7 +64,6 @@ class Dataset:
                 "ready": "rgb(211,211,211)",
                 "prefill": "rgb(135,206,235)",
                 "decode": "rgb(255,165,0)",
-                "idle": "rgb(169,169,169)"
             },
             index_col='State',
             show_colorbar=True,

@@ -14,8 +14,8 @@ np.random.seed(42)
 
 RESULTS_PATH = './results'
 SCHEDULER_NAMES = [
-    'fcfs_nonbatch',
-    'fcfs_batch',
+    # 'fcfs_nonbatch',
+    # 'fcfs_batch',
     'fcfs_dynamic_batch',
     'fcfs_dynamic_batch_predict',
     'sjf_nonbatch',

@@ -28,7 +28,6 @@ class ProcessHistoryState(Enum):
     READY = "ready"
     DECODE = "decode"
     PREFILL = "prefill"
-    IDLE = "idle"
     COMPLETED = "completed"
 
 

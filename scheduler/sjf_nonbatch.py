@@ -1,6 +1,3 @@
-from gpu import GPUPhase
-
-
 class SJFNonBatchScheduler:
     """
     Shortest Job First (SJF) Non-Batch Scheduler
@@ -47,17 +44,17 @@ class SJFNonBatchScheduler:
         """
         # Wait if both queue and GPU are empty
         if len(self._queue) == 0 and len(self._gpu_view.request_views) == 0:
-            return 1, None, None, None
+            return 1, None, None
         
         # If GPU is empty, start the shortest job from queue
         if len(self._gpu_view.request_views) == 0:
             if len(self._queue) > 0:
                 # Get the shortest job (first in sorted queue)
                 shortest_job = self._queue.pop(0)
-                return 0, GPUPhase.PREFILL, [shortest_job.id], []
+                return 0, [shortest_job.id], []
         
         # Continue processing current job
-        return 0, GPUPhase.DECODE, [], []
+        return 0, [], []
     
     def update_gpu_view(self, gpu_view):
         """Update the scheduler's view of the GPU state"""
