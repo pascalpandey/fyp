@@ -156,8 +156,8 @@ class GPU:
     def get_gpu_view(self):
         return GPUView(self)
 
-    def visualize_history(self, results_path, scheduler_name):
-        filename = f"{scheduler_name}_vram_usage.html"
+    def visualize_history(self, results_path, scheduler_name, dataset_name):
+        filename = f"{dataset_name}_{scheduler_name}_vram_usage.html"
         os.makedirs(results_path, exist_ok=True)
 
         df = pd.DataFrame({

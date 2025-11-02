@@ -35,13 +35,13 @@ class Dataset:
         ) / len(self._requests)
         print(f"Average Latency {scheduler_name}: {average_latency:.3f} time units")
 
-    def visualize_request_history(self, results_path, scheduler_name):
+    def visualize_request_history(self, results_path, scheduler_name, dataset_name):
         os.makedirs(results_path, exist_ok=True)
-        html_path = os.path.join(results_path, f"{scheduler_name}_request_timeline.html")
+        html_path = os.path.join(results_path, f"{dataset_name}_{scheduler_name}_request_timeline.html")
 
         rows = []
-        for i, req_key in enumerate(self._requests):
-            request = self._requests[req_key]
+        for req_id in self._requests:
+            request = self._requests[req_id]
             history_timestamps = sorted(request.process_history.keys())
 
             for j in range(len(history_timestamps) - 1):
@@ -50,7 +50,7 @@ class Dataset:
                 state = request.process_history[start].value
 
                 rows.append({
-                    "Task": f"Request {i}",
+                    "Task": request.visualization_name,
                     "Start": start,
                     "Finish": end,
                     "State": state,

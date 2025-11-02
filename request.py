@@ -54,8 +54,9 @@ def _calc_current_vram_usage(request):
 
 
 class Request:
-    def __init__(self, prompt_len, response_len, request_timestamp, predicted_response_len):
+    def __init__(self, visualization_name, prompt_len, response_len, request_timestamp, predicted_response_len):
         self.id = uuid.uuid4()
+        self.visualization_name = visualization_name
         self._prompt_len = prompt_len
         self._response_len = response_len
         self.request_timestamp = request_timestamp

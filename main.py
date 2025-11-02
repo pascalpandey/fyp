@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 from loader.prompt_engineering_dataset import PromptEngineeringDatasetLoader
+from loader.sharegpt_dataset import ShareGPTDatasetLoader
 from scheduler.fcfs_batch import FCFSBatchScheduler
 from scheduler.fcfs_nonbatch import FCFSNonBatchScheduler
 from scheduler.fcfs_dyn_batch import FCFSDynamicBatchScheduler
@@ -10,11 +11,6 @@ from gpu import GPU, GPUView
 
 np.random.seed(42)
 
-DATA_PATH = './data/prompt_engineering_dataset.csv'
-DATA_SIZE = 100
-REQUEST_RATE = 1/5
-PREDICTED_LEN_STDEV = 0.1
-VRAM_SLOTS = 100
 RESULTS_PATH = './results'
 SCHEDULER_NAMES = [
     'fcfs_nonbatch',
@@ -30,27 +26,64 @@ SCHEDULER_DICT = {
 }
 SAVE_VISUALIZATIONS = True
 
+PROMPT_ENGINEERING_DATA_PATH = './data/prompt_engineering_dataset.csv'
+PROMPT_ENGINEERING_MAX_DATA_SIZE = 100 # max is 5010
+PROMPT_ENGINEERING_REQUEST_RATE = 1/5
+PROMPT_ENGINEERING_PREDICTED_LEN_STDEV = 0.1
+PROMPT_ENGINEERING_VRAM_SLOTS = 100
+
+SHAREGPT_DATA_PATH = './data/ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json'
+SHAREGPT_MAX_CONVERSATION_COUNT = 50 # max is 94145
+SHAREGPT_CONVERSATION_RATE = 1/100
+SHAREGPT_PROMPT_RATE = 1/20
+SHAREGPT_PREDICTED_LEN_STDEV = 0.1
+SHAREGPT_VRAM_SLOTS = 10000
+SHAREGPT_MAX_CONTEXT_WINDOW = 8192
+
+EXPERIMENT_PARAMETERS = {
+    "prompt_engineering": (
+        PromptEngineeringDatasetLoader(
+            PROMPT_ENGINEERING_DATA_PATH, 
+            PROMPT_ENGINEERING_MAX_DATA_SIZE, 
+            PROMPT_ENGINEERING_REQUEST_RATE, 
+            PROMPT_ENGINEERING_PREDICTED_LEN_STDEV
+        ),
+        PROMPT_ENGINEERING_VRAM_SLOTS 
+    ),
+    "sharegpt": (
+        ShareGPTDatasetLoader(
+            SHAREGPT_DATA_PATH, 
+            SHAREGPT_MAX_CONVERSATION_COUNT, 
+            SHAREGPT_CONVERSATION_RATE, 
+            SHAREGPT_PROMPT_RATE, 
+            SHAREGPT_PREDICTED_LEN_STDEV,
+            SHAREGPT_MAX_CONTEXT_WINDOW
+        ),
+        SHAREGPT_VRAM_SLOTS
+    )
+}
+
 def main():
-    loader = PromptEngineeringDatasetLoader(
-        DATA_PATH, DATA_SIZE, REQUEST_RATE, PREDICTED_LEN_STDEV)
-    dataset = loader.load()
+    for dataset_name, (loader, vram_slots) in EXPERIMENT_PARAMETERS.items():
+        print(f"Running experiment for {dataset_name} dataset \n")
+        dataset = loader.load()
 
-    for scheduler_name in SCHEDULER_NAMES:
-        dataset_copy = copy.deepcopy(dataset)
+        for scheduler_name in SCHEDULER_NAMES:
+            dataset_copy = copy.deepcopy(dataset)
 
-        gpu = GPU(VRAM_SLOTS)
+            gpu = GPU(vram_slots)
 
-        scheduler = SCHEDULER_DICT[scheduler_name](GPUView(gpu))
+            scheduler = SCHEDULER_DICT[scheduler_name](GPUView(gpu))
 
-        simulator = Simulator(dataset_copy, gpu, scheduler)
-        simulator.run()
+            simulator = Simulator(dataset_copy, gpu, scheduler)
+            simulator.run()
 
-        dataset_copy.show_average_latency(scheduler_name)
-        if SAVE_VISUALIZATIONS:
-            dataset_copy.visualize_request_history(RESULTS_PATH, scheduler_name)
-            gpu.visualize_history(RESULTS_PATH, scheduler_name)
+            dataset_copy.show_average_latency(scheduler_name)
+            if SAVE_VISUALIZATIONS:
+                dataset_copy.visualize_request_history(RESULTS_PATH, scheduler_name, dataset_name)
+                gpu.visualize_history(RESULTS_PATH, scheduler_name, dataset_name)
 
-        print() # newline
+            print() # newline
 
 if __name__ == "__main__":
     main()

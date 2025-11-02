@@ -11,10 +11,10 @@ class PromptEngineeringDatasetLoader:
         inter_arrival_times = np.random.exponential(1/request_rate, size=size)
         self._request_times = np.round(
             np.cumsum(inter_arrival_times), 3).tolist()
-        self.sigma = sigma
+        self._sigma = sigma
     
     def _get_predicted_length(self, pred_mean):
-        noise = np.random.normal(0, self.sigma)
+        noise = np.random.normal(0, self._sigma)
         return int(pred_mean * np.exp(noise))
 
     def load(self):
@@ -28,6 +28,7 @@ class PromptEngineeringDatasetLoader:
                 response_len = len(row['Response'].split(' '))
                 predicted_response_len = self._get_predicted_length(response_len)
                 data = Request(
+                    f"Request {i}",
                     prompt_len,
                     response_len,
                     self._request_times[i],
