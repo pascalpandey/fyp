@@ -13,9 +13,9 @@ class PromptEngineeringDatasetLoader:
             np.cumsum(inter_arrival_times), 3).tolist()
         self._sigma = sigma
     
-    def _get_predicted_length(self, pred_mean):
+    def _get_predicted_length(self, actual_response_len):
         noise = np.random.normal(0, self._sigma)
-        return int(pred_mean * np.exp(noise))
+        return int(actual_response_len * np.exp(noise))
 
     def load(self):
         dataset = Dataset()

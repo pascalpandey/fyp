@@ -18,22 +18,17 @@ class FCFSBatchScheduler:
         if len(self._gpu_view.request_views) == 0:
             while self._gpu_view.is_valid_step() and len(self._queue) > 0:
                 request_view = self._queue.pop(0)
-                request_view.state = RequestState.SCHEDULED
-                request_view.process_stage = ProcessStage.PREFILL
-                self._gpu_view.request_views.append(request_view)
+                self._gpu_view.schedule(request_view)
             if not self._gpu_view.is_valid_step():
-                self._queue.insert(0, self._gpu_view.request_views.pop())
+                self._queue.insert(0, self._gpu_view.preempt_top())
             return 0, [request_view.id for request_view in self._gpu_view.request_views], []
 
-        preempted_requests_id = []
+        preempted_request_ids = []
         while not self._gpu_view.is_valid_step():
-            request_view = self._gpu_view.request_views.pop()
-            self._gpu_view.remaining_vram_slots += request_view.get_current_vram_usage()
-            request_view.state = RequestState.READY
-            request_view.process_stage = None
-            preempted_requests_id.append(request_view.id)
+            request_view = self._gpu_view.preempt_top()
+            preempted_request_ids.append(request_view.id)
             self._queue.insert(0, request_view)
-        return 0, [], preempted_requests_id
+        return 0, [], preempted_request_ids
 
     def update_gpu_view(self, gpu_view):
         self._gpu_view = gpu_view

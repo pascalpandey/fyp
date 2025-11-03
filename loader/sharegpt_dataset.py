@@ -18,9 +18,9 @@ class ShareGPTDatasetLoader:
         self._encoding = tiktoken.encoding_for_model("gpt-4")
         self._max_context_window = max_context_window
 
-    def _get_predicted_length(self, pred_mean):
+    def _get_predicted_length(self, actual_response_len):
         noise = np.random.normal(0, self._sigma)
-        return int(pred_mean * np.exp(noise))
+        return int(actual_response_len * np.exp(noise))
 
     def load(self):
         dataset = Dataset()

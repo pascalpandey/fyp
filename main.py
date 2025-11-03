@@ -7,6 +7,8 @@ from scheduler.fcfs_nonbatch import FCFSNonBatchScheduler
 from scheduler.fcfs_dyn_batch import FCFSDynamicBatchScheduler
 from scheduler.fcfs_dyn_batch_predict import FCFSDynamicBatchPredictScheduler
 from scheduler.sjf_nonbatch import SJFNonBatchScheduler
+from scheduler.sjf_dyn_batch_predict import SJFDynamicBatchPredictScheduler
+from scheduler.srpt_dyn_batch_predict import SRPTDynamicBatchPredictScheduler
 from simulator import Simulator
 from gpu import GPU, GPUView
 
@@ -14,29 +16,33 @@ np.random.seed(42)
 
 RESULTS_PATH = './results'
 SCHEDULER_NAMES = [
-    # 'fcfs_nonbatch',
-    # 'fcfs_batch',
+    'fcfs_nonbatch',
+    'fcfs_batch',
     'fcfs_dynamic_batch',
     'fcfs_dynamic_batch_predict',
     'sjf_nonbatch',
+    'sjf_dynamic_batch_predict',
+    # 'srpt_dynamic_batch_predict'
 ]
 SCHEDULER_DICT = {
     'fcfs_nonbatch': FCFSNonBatchScheduler,
     'fcfs_batch': FCFSBatchScheduler,
     'fcfs_dynamic_batch': FCFSDynamicBatchScheduler,
     'fcfs_dynamic_batch_predict': FCFSDynamicBatchPredictScheduler,
-    'sjf_nonbatch': SJFNonBatchScheduler
+    'sjf_nonbatch': SJFNonBatchScheduler,
+    'sjf_dynamic_batch_predict': SJFDynamicBatchPredictScheduler,
+    'srpt_dynamic_batch_predict': SRPTDynamicBatchPredictScheduler
 }
 SAVE_VISUALIZATIONS = True
 
 PROMPT_ENGINEERING_DATA_PATH = './data/prompt_engineering_dataset.csv'
 PROMPT_ENGINEERING_MAX_DATA_SIZE = 100 # max is 5010
-PROMPT_ENGINEERING_REQUEST_RATE = 1/5
+PROMPT_ENGINEERING_REQUEST_RATE = 1/3
 PROMPT_ENGINEERING_PREDICTED_LEN_STDEV = 0.1
-PROMPT_ENGINEERING_VRAM_SLOTS = 100
+PROMPT_ENGINEERING_VRAM_SLOTS = 75
 
 SHAREGPT_DATA_PATH = './data/ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json'
-SHAREGPT_MAX_CONVERSATION_COUNT = 50 # max is 94145
+SHAREGPT_MAX_CONVERSATION_COUNT = 80 # max is 94145
 SHAREGPT_CONVERSATION_RATE = 1/100
 SHAREGPT_PROMPT_RATE = 1/20
 SHAREGPT_PREDICTED_LEN_STDEV = 0.1

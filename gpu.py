@@ -89,12 +89,11 @@ class GPU:
     def start_step(self, timestamp):
         for request in self._requests:
             if request.process_stage == ProcessStage.PREFILL:
-                request.add_process_history(
-                    timestamp, ProcessHistoryState.PREFILL)
+                request.add_process_history(timestamp, ProcessHistoryState.PREFILL)
 
             elif request.process_stage == ProcessStage.DECODE:
-                request.add_process_history(
-                    timestamp, ProcessHistoryState.DECODE)
+                request.add_process_history(timestamp, ProcessHistoryState.DECODE)
+
         return 1
 
     # From Alladin paper page 4
@@ -104,20 +103,24 @@ class GPU:
         vram_slots_allocated = 0
         vram_slots_freed = 0
         completed_requests = []
-        for i, request in enumerate(self._requests):
+        continuing_requests = []
+        for request in self._requests:
             if request.process_stage == ProcessStage.PREFILL:
                 # state stays SCHEDULED, process_stage to DECODE
                 vram_slots_allocated += request.step(timestamp)[1]
+                continuing_requests.append(request)
 
             elif request.process_stage == ProcessStage.DECODE:
                 # state stays SCHEDULED, process_stage stays DECODE or to COMPLETE
                 update_type, update_slots = request.step(timestamp)
                 if update_type == VRAMUpdateType.ALLOCATE:
                     vram_slots_allocated += update_slots
+                    continuing_requests.append(request)
                 else:
                     vram_slots_freed += update_slots
-                    completed_requests.append(self._requests.pop(i))
-
+                    completed_requests.append(request)
+        
+        self._requests = continuing_requests
         self._vram.allocate(vram_slots_allocated, timestamp)
         self._vram.free(vram_slots_freed, timestamp)
         return completed_requests
@@ -162,6 +165,15 @@ class GPUView:
         self.remaining_vram_slots = gpu.get_remaining_vram_slots()
         self.request_views = gpu.get_request_views()
         self.total_vram_slots = self.used_vram_slots + self.remaining_vram_slots
+    
+    def schedule(self, request_view):
+        request_view.schedule()
+        self.request_views.append(request_view)
+    
+    def preempt_top(self):
+        request_view = self.request_views.pop()
+        self.remaining_vram_slots += request_view.preempt()
+        return request_view
 
     def is_valid_step(self):
         vram_slots_required = 0

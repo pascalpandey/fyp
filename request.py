@@ -103,8 +103,7 @@ class Request:
                         self._decode_progress += 1
                     else:
                         self.process_stage = RequestState.COMPLETED
-                        self.add_process_history(
-                            timestamp, ProcessHistoryState.COMPLETED)
+                        self.add_process_history(timestamp, ProcessHistoryState.COMPLETED)
                         self.response_timestamp = timestamp
 
                 return update_type, update_slots
@@ -113,7 +112,7 @@ class Request:
         if self.state != RequestState.SCHEDULED:
             raise Exception(
                 f"Request.preempt: cannot preempt from {self.state}")
-        self.state = RequestState.READY
+        self.state = RequestState.READY # no need to set process_stage and decode_progress as it is handled in .step()
         self.add_process_history(timestamp, ProcessHistoryState.READY)
 
     def add_process_history(self, timestamp, process_history_state):
@@ -141,6 +140,18 @@ class RequestView:
     
     def get_total_predicted_vram_usage(self):
         return self._prompt_len + self.predicted_response_len - 1
+    
+    def schedule(self):
+        self.state = RequestState.SCHEDULED
+        self.process_stage = ProcessStage.PREFILL
+        self._decode_progress = 0
+    
+    def preempt(self):
+        reclaimed_vram = self.get_current_vram_usage()
+        self.state = RequestState.READY
+        self.process_stage = None
+        self._decode_progress = 0
+        return reclaimed_vram
 
     # public access aliases, needed because common utility functions with Request uses
     # _prompt_len and _decode_progress
