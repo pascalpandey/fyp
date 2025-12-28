@@ -5,6 +5,9 @@ class FCFSNonBatchScheduler:
 
     def queue(self, request_views):
         self._queue.extend(request_views)
+    
+    def update_gpu_view(self, gpu_view):
+        self._gpu_view = gpu_view
 
     def decide(self):
         # wait if queue and GPU is empty
@@ -15,6 +18,3 @@ class FCFSNonBatchScheduler:
             return 0, [self._queue.pop(0).id], []
 
         return 0, [], []
-
-    def update_gpu_view(self, gpu_view):
-        self._gpu_view = gpu_view

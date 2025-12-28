@@ -30,11 +30,25 @@ class SortedListItem:
     def __lt__(self, other):
         return self.preemption_benefit < other.preemption_benefit
 
+class ViolationCounter:
+    def __init__(self, predicted_response_len):
+        self.violation_count = 0
+        self.initial_predicted_response_len = predicted_response_len
+        self.adjusted_predicted_response_len = predicted_response_len
+    
+    def check_violation(self, current_decode_progress):
+        if current_decode_progress == self.adjusted_predicted_response_len:
+            self.violation_count += 1
+            self.adjusted_predicted_response_len += (0.25 ** self.violation_count) * self.initial_predicted_response_len
+        return self.adjusted_predicted_response_len
 
-class SRPTDynamicBatchPredictScheduler:
+
+
+class SRPTDynamicBatchPredictAdjustmentScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
         self.update_gpu_view(initial_gpu_view)
+        self.pred_adjustment = {}
 
     def queue(self, request_views):
         for request_view in request_views:
@@ -43,6 +57,11 @@ class SRPTDynamicBatchPredictScheduler:
     def update_gpu_view(self, gpu_view):
         self._gpu_view = gpu_view
         self._gpu_preemption_benefit = SortedList([])
+        for request_view in self._gpu_view.request_views:
+            if request_view.id not in self.pred_adjustment:
+                self.pred_adjustment[request_view.id] = ViolationCounter(request_view.predicted_response_len)
+            else:
+                request_view.predicted_response_len = self.pred_adjustment[request_view.id].check_violation(request_view.decode_progress)
         for request_view in self._gpu_view.request_views:
             self._gpu_preemption_benefit.add(SortedListItem(request_view))
 
@@ -99,9 +118,8 @@ class SRPTDynamicBatchPredictScheduler:
 
         # will still need to preempt if actual step is invalid
         while not self._gpu_view.is_valid_step():
-            preempted_request_sorted_list_item = self._gpu_preemption_benefit.pop()
-            self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
-            preempted_request_ids.append(preempted_request_sorted_list_item.id)
-            heapq.heappush(self._queue, RequestHeapItem(preempted_request_sorted_list_item.req))
+            request_view = self._gpu_view.preempt_top()
+            preempted_request_ids.append(request_view.id)
+            heapq.heappush(self._queue, RequestHeapItem(request_view))
 
         return 0, scheduled_request_ids, preempted_request_ids

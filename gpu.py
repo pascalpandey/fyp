@@ -61,7 +61,7 @@ class GPU:
                     break
             if not found:
                 raise Exception(
-                    "GPU.preempt_requests: request {request} not found in scheduled requests")
+                    f"GPU.preempt_requests: request {preempted_request.id} not found in scheduled requests")
         self._vram.free(reclaimed_slots, timestamp)
 
     # From Alladin paper page 4
@@ -89,10 +89,12 @@ class GPU:
     def start_step(self, timestamp):
         for request in self._requests:
             if request.process_stage == ProcessStage.PREFILL:
-                request.add_process_history(timestamp, ProcessHistoryState.PREFILL)
+                request.add_process_history(
+                    timestamp, ProcessHistoryState.PREFILL)
 
             elif request.process_stage == ProcessStage.DECODE:
-                request.add_process_history(timestamp, ProcessHistoryState.DECODE)
+                request.add_process_history(
+                    timestamp, ProcessHistoryState.DECODE)
 
         return 1
 
@@ -119,7 +121,7 @@ class GPU:
                 else:
                     vram_slots_freed += update_slots
                     completed_requests.append(request)
-        
+
         self._requests = continuing_requests
         self._vram.allocate(vram_slots_allocated, timestamp)
         self._vram.free(vram_slots_freed, timestamp)
@@ -138,7 +140,8 @@ class GPU:
         return GPUView(self)
 
     def visualize_history(self, results_path, scheduler_name, dataset_name):
-        filename = f"{dataset_name}_{scheduler_name}_vram_usage.html"
+        filename = f"{scheduler_name}.html"
+        results_path = os.path.join(results_path, dataset_name, "vram_usage")
         os.makedirs(results_path, exist_ok=True)
 
         df = pd.DataFrame({
@@ -156,7 +159,6 @@ class GPU:
 
         html_path = os.path.join(results_path, filename)
         fig.write_html(html_path)
-        print(f"Saved {scheduler_name} VRAM usage plot to {html_path}")
 
 
 class GPUView:
@@ -165,15 +167,23 @@ class GPUView:
         self.remaining_vram_slots = gpu.get_remaining_vram_slots()
         self.request_views = gpu.get_request_views()
         self.total_vram_slots = self.used_vram_slots + self.remaining_vram_slots
-    
+
     def schedule(self, request_view):
         request_view.schedule()
         self.request_views.append(request_view)
-    
+
     def preempt_top(self):
         request_view = self.request_views.pop()
         self.remaining_vram_slots += request_view.preempt()
         return request_view
+
+    def preempt_request(self, request_id):
+        for i, request_view in enumerate(self.request_views):
+            if request_view.id == request_id:
+                preempted_request_view = self.request_views.pop(i)
+                self.remaining_vram_slots += preempted_request_view.preempt()
+                return preempted_request_view
+        return None
 
     def is_valid_step(self):
         vram_slots_required = 0
@@ -191,15 +201,17 @@ class GPUView:
         return True
 
     def is_valid_step_with_predict(self):
-        sorted_by_remaining_tokens = sorted(
-            [x for x in self.request_views], key=lambda x: x.predicted_response_len - x.decode_progress - 1)
-        predicted_usage = self.used_vram_slots + \
-            sum([x.prompt_len for x in self.request_views if x.process_stage == ProcessStage.PREFILL])
-        for i, request_view in enumerate(sorted_by_remaining_tokens):
-            predicted_usage += max(1, request_view.predicted_response_len - request_view.decode_progress - 1) * \
-            (len(sorted_by_remaining_tokens) - i)
+        remaining_times = list(set([x.get_predicted_end_time() - 1 for x in self.request_views]))
+        for time in remaining_times:
+            predicted_usage = self.used_vram_slots
+            for request_view in self.request_views:
+                update_type, update_slots = request_view.get_vram_usage_after_time(time)
+                if update_type == VRAMUpdateType.ALLOCATE:
+                    predicted_usage += update_slots
+                else:
+                    predicted_usage -= update_slots
+            if predicted_usage < 0:
+                raise Exception(f"GPUView.is_valid_step_with_predict: predicted usage went negative")
             if predicted_usage > self.total_vram_slots:
                 return False
-            predicted_usage -= request_view.prompt_len + \
-                max(request_view.predicted_response_len - 1, request_view.decode_progress)
         return True

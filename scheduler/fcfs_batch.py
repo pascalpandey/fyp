@@ -1,6 +1,3 @@
-from request import RequestState, ProcessStage
-
-
 class FCFSBatchScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
@@ -8,6 +5,9 @@ class FCFSBatchScheduler:
 
     def queue(self, request_views):
         self._queue.extend(request_views)
+    
+    def update_gpu_view(self, gpu_view):
+        self._gpu_view = gpu_view
 
     def decide(self):
         # wait if queue and GPU is empty
@@ -29,6 +29,3 @@ class FCFSBatchScheduler:
             preempted_request_ids.append(request_view.id)
             self._queue.insert(0, request_view)
         return 0, [], preempted_request_ids
-
-    def update_gpu_view(self, gpu_view):
-        self._gpu_view = gpu_view

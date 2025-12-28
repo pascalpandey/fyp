@@ -36,6 +36,8 @@ def _calc_end_step_vram_update(request):
         return VRAMUpdateType.ALLOCATE, request._prompt_len
     elif request.process_stage == ProcessStage.DECODE:
         # because RequestView doesn't have response_len field and RequestView will never be in COMPLETE state
+        # for GPUView.predict_valid_step which uses RequestViews with no access to response_len, there's no choice
+        # but to be pessimistic and assume all requests scheduled will use up another VRAM slot at the next time step
         if isinstance(request, RequestView) or request._decode_progress + 1 != request._response_len:
             return VRAMUpdateType.ALLOCATE, 1
         return VRAMUpdateType.FREE, request._prompt_len + request._response_len - 1
@@ -137,9 +139,22 @@ class RequestView:
 
     def get_current_vram_usage(self):
         return _calc_current_vram_usage(self)
-    
-    def get_total_predicted_vram_usage(self):
-        return self._prompt_len + self.predicted_response_len - 1
+
+    def get_predicted_end_time(self):
+        # self.predicted_response_len - self.decode_progress can be negative if prediction underestimates
+        return max(self.predicted_response_len - self.decode_progress + (1 if self.process_stage == ProcessStage.PREFILL else 0), 1)
+
+    def get_vram_usage_after_time(self, time):
+        if time < 0:
+            raise Exception(f"RequestView.get_vram_usage_after_time: time is negative")
+        if time >= self.get_predicted_end_time():
+            # free only the currently used VRAM at t=0
+            return VRAMUpdateType.FREE, self.get_current_vram_usage()
+        if time == 0:
+            return VRAMUpdateType.ALLOCATE, 0
+        if self.process_stage == ProcessStage.PREFILL:
+            return VRAMUpdateType.ALLOCATE, self._prompt_len + time - 1
+        return VRAMUpdateType.ALLOCATE, time
     
     def schedule(self):
         self.state = RequestState.SCHEDULED

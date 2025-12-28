@@ -33,11 +33,12 @@ class Dataset:
             request.response_timestamp - request.request_timestamp
             for request in self._requests.values()
         ) / len(self._requests)
-        print(f"Average Latency {scheduler_name}: {average_latency:.3f} time units")
+        print(f"{scheduler_name}: {average_latency:.3f} time units")
 
     def visualize_request_history(self, results_path, scheduler_name, dataset_name):
+        results_path = os.path.join(results_path, dataset_name, "request_timeline")
         os.makedirs(results_path, exist_ok=True)
-        html_path = os.path.join(results_path, f"{dataset_name}_{scheduler_name}_request_timeline.html")
+        html_path = os.path.join(results_path, f"{scheduler_name}.html")
 
         rows = []
         for req_id in self._requests:
@@ -76,11 +77,8 @@ class Dataset:
 
         fig.update_layout(
             xaxis_type="linear",
-            height=15*df["Task"].nunique()
+            # height=50*df["Task"].nunique()
         )
 
         fig.show()
         fig.write_html(html_path)
-
-        print(f"Saved {scheduler_name} timeline visualization to {html_path}")
-

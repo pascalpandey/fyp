@@ -15,3 +15,9 @@ to run
 ```bash
 python3 main.py
 ```
+
+to test
+
+```bash
+PYTHONPATH=. pytest -s
+```
