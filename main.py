@@ -10,6 +10,8 @@ from scheduler.sjf_nonbatch import SJFNonBatchScheduler
 from scheduler.sjf_batch import SJFBatchScheduler
 from scheduler.sjf_dyn_batch import SJFDynamicBatchScheduler
 from scheduler.srtf_nonbatch import SRTFNonBatchScheduler
+from scheduler.srtf_batch import SRTFBatchScheduler
+from scheduler.srtf_dyn_batch import SRTFDynamicBatchScheduler
 from simulator import Simulator
 from gpu import GPU, GPUView
 
@@ -25,6 +27,8 @@ SCHEDULER_NAMES = [
     'sjf_batch',
     'sjf_dynamic_batch',
     'srtf_nonbatch',
+    'srtf_batch',
+    'srtf_dynamic_batch',
 ]
 SCHEDULER_DICT = {
     'fcfs_nonbatch': FCFSNonBatchScheduler,
@@ -34,7 +38,9 @@ SCHEDULER_DICT = {
     'sjf_nonbatch': SJFNonBatchScheduler,
     'sjf_batch': SJFBatchScheduler,
     'sjf_dynamic_batch': SJFDynamicBatchScheduler,
-    'srtf_nonbatch': SRTFNonBatchScheduler
+    'srtf_nonbatch': SRTFNonBatchScheduler,
+    'srtf_batch': SRTFBatchScheduler,
+    'srtf_dynamic_batch': SRTFDynamicBatchScheduler,
 }
 SAVE_VISUALIZATIONS = True
 
