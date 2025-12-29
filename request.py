@@ -64,6 +64,7 @@ class Request:
         self.state = RequestState.PENDING
         self.process_stage = None
         self._decode_progress = 0
+        self._was_preempted_in_decode = False  # Track if preempted mid-decode for resume
         self.process_history = {
             self.request_timestamp: RequestState.READY}
 
@@ -90,7 +91,14 @@ class Request:
 
             case RequestState.READY:
                 self.state = RequestState.SCHEDULED
-                self.process_stage = ProcessStage.PREFILL
+                # Check if this job was preempted mid-decode and should resume
+                if self._was_preempted_in_decode:
+                    # Resume from DECODE stage, preserving decode_progress
+                    self.process_stage = ProcessStage.DECODE
+                    self._was_preempted_in_decode = False  # Clear the flag
+                else:
+                    # Fresh start from PREFILL
+                    self.process_stage = ProcessStage.PREFILL
 
             case RequestState.SCHEDULED:
                 update_type, update_slots = _calc_end_step_vram_update(self)
@@ -109,10 +117,23 @@ class Request:
 
                 return update_type, update_slots
 
-    def preempt(self, timestamp):
+    def preempt(self, timestamp, preserve_progress=False):
+        """
+        Preempt this request, returning it to READY state.
+        
+        Args:
+            timestamp: Current simulation time
+            preserve_progress: If True, preserve decode progress and resume from DECODE
+                             If False (default), restart from PREFILL (loses progress)
+        """
         if self.state != RequestState.SCHEDULED:
             raise Exception(
                 f"Request.preempt: cannot preempt from {self.state}")
+        # Track if we're preempting mid-decode so we can resume later
+        # Only preserve progress if explicitly requested (SRTF uses this)
+        if preserve_progress and self.process_stage == ProcessStage.DECODE:
+            self._was_preempted_in_decode = True
+            # decode_progress is preserved automatically
         self.state = RequestState.READY
         self.add_process_history(timestamp, ProcessHistoryState.READY)
 
@@ -132,6 +153,7 @@ class RequestView:
         self.process_stage = request.process_stage
         self._decode_progress = request._decode_progress
         self.predicted_response_len = request.predicted_response_len
+        self._was_preempted_in_decode = request._was_preempted_in_decode
 
     def get_end_step_vram_update(self):
         return _calc_end_step_vram_update(self)

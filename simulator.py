@@ -26,7 +26,10 @@ class Simulator:
                 continue
             
             self._gpu.schedule_requests([self._dataset._requests[request_id] for request_id in scheduled_request_ids], self._t)
-            self._gpu.preempt_requests([self._dataset._requests[request_id] for request_id in preempted_request_ids], self._t)
+            
+            # Check if scheduler supports progress-preserving preemption (e.g., SRTF)
+            preserve_progress = getattr(self._scheduler, 'preserve_progress_on_preempt', False)
+            self._gpu.preempt_requests([self._dataset._requests[request_id] for request_id in preempted_request_ids], self._t, preserve_progress=preserve_progress)
 
             processing_time = self._gpu.start_step(self._t)
 

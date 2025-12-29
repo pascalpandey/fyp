@@ -7,6 +7,9 @@ from scheduler.fcfs_nonbatch import FCFSNonBatchScheduler
 from scheduler.fcfs_dyn_batch import FCFSDynamicBatchScheduler
 from scheduler.fcfs_dyn_batch_predict import FCFSDynamicBatchPredictScheduler
 from scheduler.sjf_nonbatch import SJFNonBatchScheduler
+from scheduler.sjf_batch import SJFBatchScheduler
+from scheduler.sjf_dyn_batch import SJFDynamicBatchScheduler
+from scheduler.srtf_nonbatch import SRTFNonBatchScheduler
 from simulator import Simulator
 from gpu import GPU, GPUView
 
@@ -14,18 +17,24 @@ np.random.seed(42)
 
 RESULTS_PATH = './results'
 SCHEDULER_NAMES = [
-    # 'fcfs_nonbatch',
-    # 'fcfs_batch',
+    'fcfs_nonbatch',
+    'fcfs_batch',
     'fcfs_dynamic_batch',
-    'fcfs_dynamic_batch_predict',
+    # 'fcfs_dynamic_batch_predict',
     'sjf_nonbatch',
+    'sjf_batch',
+    'sjf_dynamic_batch',
+    'srtf_nonbatch',
 ]
 SCHEDULER_DICT = {
     'fcfs_nonbatch': FCFSNonBatchScheduler,
     'fcfs_batch': FCFSBatchScheduler,
     'fcfs_dynamic_batch': FCFSDynamicBatchScheduler,
     'fcfs_dynamic_batch_predict': FCFSDynamicBatchPredictScheduler,
-    'sjf_nonbatch': SJFNonBatchScheduler
+    'sjf_nonbatch': SJFNonBatchScheduler,
+    'sjf_batch': SJFBatchScheduler,
+    'sjf_dynamic_batch': SJFDynamicBatchScheduler,
+    'srtf_nonbatch': SRTFNonBatchScheduler
 }
 SAVE_VISUALIZATIONS = True
 
@@ -53,17 +62,17 @@ EXPERIMENT_PARAMETERS = {
         ),
         PROMPT_ENGINEERING_VRAM_SLOTS 
     ),
-    "sharegpt": (
-        ShareGPTDatasetLoader(
-            SHAREGPT_DATA_PATH, 
-            SHAREGPT_MAX_CONVERSATION_COUNT, 
-            SHAREGPT_CONVERSATION_RATE, 
-            SHAREGPT_PROMPT_RATE, 
-            SHAREGPT_PREDICTED_LEN_STDEV,
-            SHAREGPT_MAX_CONTEXT_WINDOW
-        ),
-        SHAREGPT_VRAM_SLOTS
-    )
+    # "sharegpt": (
+    #     ShareGPTDatasetLoader(
+    #         SHAREGPT_DATA_PATH, 
+    #         SHAREGPT_MAX_CONVERSATION_COUNT, 
+    #         SHAREGPT_CONVERSATION_RATE, 
+    #         SHAREGPT_PROMPT_RATE, 
+    #         SHAREGPT_PREDICTED_LEN_STDEV,
+    #         SHAREGPT_MAX_CONTEXT_WINDOW
+    #     ),
+    #     SHAREGPT_VRAM_SLOTS
+    # )
 }
 
 def main():

@@ -45,10 +45,30 @@ class GPU:
 
     def schedule_requests(self, scheduled_requests, timestamp):
         for scheduled_request in scheduled_requests:
+            # Check if this is a resumed request (was preempted mid-decode)
+            # Note: We capture this BEFORE step() which may clear the flag
+            is_resuming = getattr(scheduled_request, '_was_preempted_in_decode', False)
+            
             scheduled_request.step(timestamp)  # READY to SCHEDULED
             self._requests.append(scheduled_request)
+            
+            # If resuming from decode (skipped PREFILL), re-allocate VRAM for KV cache
+            # Only allocate if the request actually resumed to DECODE stage
+            # (prompt_len + tokens decoded so far)
+            if is_resuming and scheduled_request.process_stage == ProcessStage.DECODE:
+                resume_vram = scheduled_request._prompt_len + scheduled_request._decode_progress
+                self._vram.allocate(resume_vram, timestamp)
 
-    def preempt_requests(self, preempted_requests, timestamp):
+    def preempt_requests(self, preempted_requests, timestamp, preserve_progress=False):
+        """
+        Preempt the given requests, removing them from the GPU.
+        
+        Args:
+            preempted_requests: List of requests to preempt
+            timestamp: Current simulation time
+            preserve_progress: If True, preserve decode progress for resuming later (SRTF)
+                             If False (default), requests restart from PREFILL
+        """
         reclaimed_slots = 0
         for preempted_request in preempted_requests:
             found = False
@@ -56,7 +76,7 @@ class GPU:
                 if scheduled_request.id == preempted_request.id:
                     reclaimed_slots += scheduled_request.get_current_vram_usage()
                     preempted_request = self._requests.pop(i)
-                    preempted_request.preempt(timestamp)
+                    preempted_request.preempt(timestamp, preserve_progress=preserve_progress)
                     found = True
                     break
             if not found:

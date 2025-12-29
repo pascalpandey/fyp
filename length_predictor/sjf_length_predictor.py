@@ -72,7 +72,7 @@ class SJFLengthPredictor:
                 list_indicators * 2 + 
                 code_indicators * 1.5 + 
                 explanation_indicators * 1.8 +
-                min(question_count, 3) * 0.5
+                min(question_count, 1) * 0.5
             )
             
             features.append([
