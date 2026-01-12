@@ -25,6 +25,9 @@ class Simulator:
                 self._t += wait_time
                 continue
             
+            # TODO:
+            # maybe preempt first then schedule, so that if a request is in both the preempt and schedule list, it will be 
+            # as if the request is restarted, maybe this is faster in certain cases
             self._gpu.schedule_requests([self._dataset._requests[request_id] for request_id in scheduled_request_ids], self._t)
             self._gpu.preempt_requests([self._dataset._requests[request_id] for request_id in preempted_request_ids], self._t)
 

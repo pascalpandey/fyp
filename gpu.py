@@ -1,4 +1,5 @@
 import os
+import copy
 import pandas as pd
 import plotly.express as px
 from request import VRAMUpdateType, ProcessStage, ProcessHistoryState
@@ -123,6 +124,8 @@ class GPU:
                     completed_requests.append(request)
 
         self._requests = continuing_requests
+        # allocate first because free happens after decode stage finishes while KV population
+        # happens during the step. If allocate goes over the VRAM slots, raise an exception.
         self._vram.allocate(vram_slots_allocated, timestamp)
         self._vram.free(vram_slots_freed, timestamp)
         return completed_requests
@@ -139,9 +142,9 @@ class GPU:
     def get_gpu_view(self):
         return GPUView(self)
 
-    def visualize_history(self, results_path, scheduler_name, dataset_name):
+    def visualize_history(self, results_path, experiment_name, scheduler_name, dataset_name):
         filename = f"{scheduler_name}.html"
-        results_path = os.path.join(results_path, dataset_name, "vram_usage")
+        results_path = os.path.join(results_path, experiment_name, dataset_name, "vram_usage")
         os.makedirs(results_path, exist_ok=True)
 
         df = pd.DataFrame({
@@ -193,6 +196,8 @@ class GPUView:
 
             if request_view.process_stage == ProcessStage.DECODE:
                 update_type, update_slots = request_view.get_end_step_vram_update()
+                # no need to handle VRAMUpdateType.FREE because allocation happens in the middle of 
+                # a timestep while free only occurs after the timestep ends
                 if update_type == VRAMUpdateType.ALLOCATE:
                     vram_slots_required += update_slots
 
@@ -201,7 +206,7 @@ class GPUView:
         return True
 
     def is_valid_step_with_predict(self):
-        remaining_times = list(set([x.get_predicted_end_time() - 1 for x in self.request_views]))
+        remaining_times = list(set([x.get_remaining_processing_time() for x in self.request_views]))
         for time in remaining_times:
             predicted_usage = self.used_vram_slots
             for request_view in self.request_views:
@@ -215,3 +220,9 @@ class GPUView:
             if predicted_usage > self.total_vram_slots:
                 return False
         return True
+
+    def try_swap_with_predict(self, preempt_candidate_request_id, schedule_candidate_request_view):
+        gpu_view_copy = copy.deepcopy(self)
+        gpu_view_copy.preempt_request(preempt_candidate_request_id)
+        gpu_view_copy.schedule(schedule_candidate_request_view)
+        return gpu_view_copy.is_valid_step_with_predict()

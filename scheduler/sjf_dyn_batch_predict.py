@@ -42,6 +42,8 @@ class SJFDynamicBatchPredictScheduler:
             req = self._gpu_view.preempt_top()
             heapq.heappush(self._queue, RequestHeapItem(req))
             scheduled_request_ids.pop()
+        
+        self._gpu_view.request_views.sort(key= lambda x: x.get_remaining_processing_time())
 
         preempted_request_ids = []
         while not self._gpu_view.is_valid_step():

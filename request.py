@@ -123,6 +123,9 @@ class Request:
     def get_current_vram_usage(self):
         return _calc_current_vram_usage(self)
 
+    def get_end_step_vram_update(self):
+        return _calc_end_step_vram_update(self)
+
 
 class RequestView:
     def __init__(self, request):
@@ -140,16 +143,20 @@ class RequestView:
     def get_current_vram_usage(self):
         return _calc_current_vram_usage(self)
 
-    def get_predicted_end_time(self):
+    def get_remaining_processing_time(self):
         # self.predicted_response_len - self.decode_progress can be negative if prediction underestimates
-        return max(self.predicted_response_len - self.decode_progress + (1 if self.process_stage == ProcessStage.PREFILL else 0), 1)
+        return max(self.predicted_response_len - self.decode_progress + (0 if self.process_stage == ProcessStage.DECODE else 1), 1)
 
     def get_vram_usage_after_time(self, time):
         if time < 0:
             raise Exception(f"RequestView.get_vram_usage_after_time: time is negative")
-        if time >= self.get_predicted_end_time():
-            # free only the currently used VRAM at t=0
+        if time > self.get_remaining_processing_time():
+            # free only the currently used VRAM when the request finishes
+            # requests that finish at the same timestep only frees usable memory at the timestep after that
             return VRAMUpdateType.FREE, self.get_current_vram_usage()
+        if time == self.get_remaining_processing_time():
+             # requests at the last timestep doesn't use up a slot
+             return VRAMUpdateType.ALLOCATE, time - 1
         if time == 0:
             return VRAMUpdateType.ALLOCATE, 0
         if self.process_stage == ProcessStage.PREFILL:

@@ -34,9 +34,10 @@ class Dataset:
             for request in self._requests.values()
         ) / len(self._requests)
         print(f"{scheduler_name}: {average_latency:.3f} time units")
+        return average_latency
 
-    def visualize_request_history(self, results_path, scheduler_name, dataset_name):
-        results_path = os.path.join(results_path, dataset_name, "request_timeline")
+    def visualize_request_history(self, results_path, experiment_name, scheduler_name, dataset_name):
+        results_path = os.path.join(results_path, experiment_name, dataset_name, "request_timeline")
         os.makedirs(results_path, exist_ok=True)
         html_path = os.path.join(results_path, f"{scheduler_name}.html")
 
