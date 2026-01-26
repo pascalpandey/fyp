@@ -115,19 +115,22 @@ class GPU:
 
             elif request.process_stage == ProcessStage.DECODE:
                 # state stays SCHEDULED, process_stage stays DECODE or to COMPLETE
-                update_type, update_slots = request.step(timestamp)
+                update_type, allocate_slots, free_slots = request.step(timestamp)
                 if update_type == VRAMUpdateType.ALLOCATE:
-                    vram_slots_allocated += update_slots
+                    vram_slots_allocated += allocate_slots
                     continuing_requests.append(request)
                 else:
-                    vram_slots_freed += update_slots
+                    vram_slots_allocated += allocate_slots
+                    vram_slots_freed += free_slots
                     completed_requests.append(request)
 
         self._requests = continuing_requests
+
         # allocate first because free happens after decode stage finishes while KV population
         # happens during the step. If allocate goes over the VRAM slots, raise an exception.
         self._vram.allocate(vram_slots_allocated, timestamp)
         self._vram.free(vram_slots_freed, timestamp)
+
         return completed_requests
 
     def get_used_vram_slots(self):
@@ -177,14 +180,18 @@ class GPUView:
 
     def preempt_top(self):
         request_view = self.request_views.pop()
-        self.remaining_vram_slots += request_view.preempt()
+        freed_slots = request_view.preempt()
+        self.remaining_vram_slots += freed_slots
+        self.used_vram_slots -= freed_slots
         return request_view
 
     def preempt_request(self, request_id):
         for i, request_view in enumerate(self.request_views):
             if request_view.id == request_id:
                 preempted_request_view = self.request_views.pop(i)
-                self.remaining_vram_slots += preempted_request_view.preempt()
+                freed_slots = preempted_request_view.preempt()
+                self.remaining_vram_slots += freed_slots
+                self.used_vram_slots -= freed_slots
                 return preempted_request_view
         return None
 
@@ -195,11 +202,9 @@ class GPUView:
                 vram_slots_required += request_view.get_end_step_vram_update()[1]
 
             if request_view.process_stage == ProcessStage.DECODE:
-                update_type, update_slots = request_view.get_end_step_vram_update()
-                # no need to handle VRAMUpdateType.FREE because allocation happens in the middle of 
-                # a timestep while free only occurs after the timestep ends
-                if update_type == VRAMUpdateType.ALLOCATE:
-                    vram_slots_required += update_slots
+                # requests in decode stage always allocates a slot
+                _, allocate_slots, _ = request_view.get_end_step_vram_update()
+                vram_slots_required += allocate_slots
 
         if vram_slots_required > self.remaining_vram_slots:
             return False
@@ -213,7 +218,7 @@ class GPUView:
                 update_type, update_slots = request_view.get_vram_usage_after_time(time)
                 if update_type == VRAMUpdateType.ALLOCATE:
                     predicted_usage += update_slots
-                else:
+                elif update_type == VRAMUpdateType.FREE:
                     predicted_usage -= update_slots
             if predicted_usage < 0:
                 raise Exception(f"GPUView.is_valid_step_with_predict: predicted usage went negative")

@@ -1,10 +1,7 @@
-import numpy as np
 import copy
 from simulator import Simulator
 from gpu import GPU, GPUView
 from experiment import EXPERIMENTS, RESULTS_PATH
-
-np.random.seed(42)
 
 def main():
     for experiment in EXPERIMENTS:

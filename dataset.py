@@ -78,7 +78,7 @@ class Dataset:
 
         fig.update_layout(
             xaxis_type="linear",
-            # height=50*df["Task"].nunique()
+            height=30*df["Task"].nunique()
         )
 
         fig.show()

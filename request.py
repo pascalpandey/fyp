@@ -22,6 +22,7 @@ class ProcessStage(Enum):
 class VRAMUpdateType(Enum):
     ALLOCATE = "allocate"
     FREE = "free"
+    ALLOCATE_THEN_FREE = "allocate_then_free"
 
 
 class ProcessHistoryState(Enum):
@@ -36,11 +37,9 @@ def _calc_end_step_vram_update(request):
         return VRAMUpdateType.ALLOCATE, request._prompt_len
     elif request.process_stage == ProcessStage.DECODE:
         # because RequestView doesn't have response_len field and RequestView will never be in COMPLETE state
-        # for GPUView.predict_valid_step which uses RequestViews with no access to response_len, there's no choice
-        # but to be pessimistic and assume all requests scheduled will use up another VRAM slot at the next time step
         if isinstance(request, RequestView) or request._decode_progress + 1 != request._response_len:
-            return VRAMUpdateType.ALLOCATE, 1
-        return VRAMUpdateType.FREE, request._prompt_len + request._response_len - 1
+            return VRAMUpdateType.ALLOCATE, 1, None
+        return VRAMUpdateType.ALLOCATE_THEN_FREE, 1, request._prompt_len + request._response_len
     else:
         raise Exception(
             "calc_end_step_vram_update: request is not in PREFILL or DECODE state")
@@ -95,7 +94,9 @@ class Request:
                 self.process_stage = ProcessStage.PREFILL
 
             case RequestState.SCHEDULED:
-                update_type, update_slots = _calc_end_step_vram_update(self)
+                # save result first as we need to run get_end_step_vram_update() before updating the request's state
+                result = self.get_end_step_vram_update()
+
                 if self.process_stage == ProcessStage.PREFILL:
                     self.process_stage = ProcessStage.DECODE
                     self._decode_progress = 0
@@ -108,7 +109,7 @@ class Request:
                         self.add_process_history(timestamp, ProcessHistoryState.COMPLETED)
                         self.response_timestamp = timestamp
 
-                return update_type, update_slots
+                return result
 
     def preempt(self, timestamp):
         if self.state != RequestState.SCHEDULED:
@@ -145,6 +146,7 @@ class RequestView:
 
     def get_remaining_processing_time(self):
         # self.predicted_response_len - self.decode_progress can be negative if prediction underestimates
+        # process_stage can be None, so use `if self.process_stage == ProcessStage.DECODE`
         return max(self.predicted_response_len - self.decode_progress + (0 if self.process_stage == ProcessStage.DECODE else 1), 1)
 
     def get_vram_usage_after_time(self, time):
@@ -154,11 +156,6 @@ class RequestView:
             # free only the currently used VRAM when the request finishes
             # requests that finish at the same timestep only frees usable memory at the timestep after that
             return VRAMUpdateType.FREE, self.get_current_vram_usage()
-        if time == self.get_remaining_processing_time():
-             # requests at the last timestep doesn't use up a slot
-             return VRAMUpdateType.ALLOCATE, time - 1
-        if time == 0:
-            return VRAMUpdateType.ALLOCATE, 0
         if self.process_stage == ProcessStage.PREFILL:
             return VRAMUpdateType.ALLOCATE, self._prompt_len + time - 1
         return VRAMUpdateType.ALLOCATE, time

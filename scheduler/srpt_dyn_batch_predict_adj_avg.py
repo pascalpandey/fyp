@@ -16,7 +16,7 @@ class RequestHeapItem:
     
     def __lt__(self, other):
         return self.get_remaining_processing_time() < other.get_remaining_processing_time()
-
+ 
 
 class SortedListItem:
     def __init__(self, req):
@@ -34,24 +34,13 @@ class SortedListItem:
         return self.get_remaining_processing_time() < other.get_remaining_processing_time()
 
 
-class ViolationCounter:
-    def __init__(self, predicted_response_len):
-        self.violation_count = 0
-        self.initial_predicted_response_len = predicted_response_len
-        self.adjusted_predicted_response_len = predicted_response_len
-    
-    def check_violation(self, current_decode_progress):
-        if current_decode_progress == self.adjusted_predicted_response_len:
-            self.violation_count += 1
-            self.adjusted_predicted_response_len += (0.25 ** self.violation_count) * self.initial_predicted_response_len
-        return self.adjusted_predicted_response_len
-
-
-class SRPTDynamicBatchPredictAdjScheduler:
+class SRPTDynamicBatchPredictAdjAvgScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
+        self._prediction_adjustment = 0
+        self._previous_requests = {}
+        self._completed_requests = 0
         self.update_gpu_view(initial_gpu_view)
-        self.pred_adjustment = {}
 
     def queue(self, request_views):
         for request_view in request_views:
@@ -59,13 +48,17 @@ class SRPTDynamicBatchPredictAdjScheduler:
     
     def update_gpu_view(self, gpu_view):
         self._gpu_view = gpu_view
+        scheduled_request_ids = set([request_view.id for request_view in self._gpu_view.request_views])
+        for req_id in self._previous_requests:
+            if req_id not in scheduled_request_ids:
+                decode_progress, predicted_response_len = self._previous_requests[req_id]
+                self._prediction_adjustment = (self._prediction_adjustment * self._completed_requests + (decode_progress + 1 - predicted_response_len)) // (self._completed_requests + 1)
+                self._completed_requests += 1
+        self._previous_requests = {}
         self._gpu_remaining_processing_time = SortedList([])
         for request_view in self._gpu_view.request_views:
-            if request_view.id not in self.pred_adjustment:
-                self.pred_adjustment[request_view.id] = ViolationCounter(request_view.predicted_response_len)
-            else:
-                request_view.predicted_response_len = self.pred_adjustment[request_view.id].check_violation(request_view.decode_progress)
-        for request_view in self._gpu_view.request_views:
+            self._previous_requests[request_view.id] = (request_view.decode_progress, request_view.predicted_response_len)
+            request_view.predicted_response_len += self._prediction_adjustment
             self._gpu_remaining_processing_time.add(SortedListItem(request_view))
 
     def decide(self):
@@ -142,5 +135,8 @@ class SRPTDynamicBatchPredictAdjScheduler:
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
             preempted_request_ids.append(preempted_request_sorted_list_item.id)
             heapq.heappush(self._queue, RequestHeapItem(preempted_request_sorted_list_item.req))
+        
+        for req_id in preempted_request_ids:
+            del self._previous_requests[req_id]
 
         return 0, scheduled_request_ids, preempted_request_ids

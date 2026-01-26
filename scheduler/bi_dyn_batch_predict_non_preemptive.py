@@ -18,7 +18,7 @@ class RequestPriority:
         return self.priority < other.priority
 
 
-class MixedDynamicBatchPredictNonPreemptiveScheduler:
+class BicriteriaDynamicBatchPredictNonPreemptiveScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
         self.update_gpu_view(initial_gpu_view)
@@ -56,7 +56,7 @@ class MixedDynamicBatchPredictNonPreemptiveScheduler:
 
         # will still need to preempt if actual step is invalid
         preempted_request_ids = []
-        while not self._gpu_view.is_valid_step():
+        while not self._gpu_view.is_valid_step_with_predict():
             preempted_request_sorted_list_item = self._gpu_request_priority.pop()
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
             preempted_request_ids.append(preempted_request_sorted_list_item.id)

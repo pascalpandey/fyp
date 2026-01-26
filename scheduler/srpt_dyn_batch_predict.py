@@ -103,9 +103,22 @@ class SRPTDynamicBatchPredictScheduler:
             self._gpu_view.schedule(scheduled_request_heap_item.req)
             scheduled_request_ids.append(scheduled_request_heap_item.id)
             self._gpu_remaining_processing_time.add(SortedListItem(scheduled_request_heap_item.req))
+        
+        scheduled_requests = []
+        while self._gpu_view.is_valid_step_with_predict() and len(self._queue) > 0:
+            request_heap_item = heapq.heappop(self._queue)
+            self._gpu_view.schedule(request_heap_item.req)
+            scheduled_request_ids.append(request_heap_item.id)
+            scheduled_requests.append(request_heap_item.req)
+        if len(scheduled_request_ids) > 0 and not self._gpu_view.is_valid_step_with_predict():
+            heapq.heappush(self._queue, RequestHeapItem(self._gpu_view.preempt_top()))
+            scheduled_request_ids.pop()
+            scheduled_requests.pop()
+        
+        for scheduled_request_view in scheduled_requests:
+           self._gpu_remaining_processing_time.add(SortedListItem(scheduled_request_view))
 
-        # will still need to preempt if actual step is invalid
-        while not self._gpu_view.is_valid_step():
+        while not self._gpu_view.is_valid_step_with_predict():
             preempted_request_sorted_list_item = self._gpu_remaining_processing_time.pop()
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
             preempted_request_ids.append(preempted_request_sorted_list_item.id)

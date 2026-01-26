@@ -25,12 +25,12 @@ def make_scheduled_request(prompt_len, predicted_response_len, process_stage, de
 @pytest.mark.parametrize(
     "total_vram, used, requests, expected",
     [
-        (15, 8, [(1, 10, ProcessStage.DECODE, 7), (1, 10, ProcessStage.PREFILL, 0)], True),
-        (15, 7, [(1, 10, ProcessStage.DECODE, 6), (1, 10, ProcessStage.PREFILL, 0)], True),
-        (15, 6, [(1, 10, ProcessStage.DECODE, 5), (1, 10, ProcessStage.PREFILL, 0)], True),
-        (15, 5, [(1, 10, ProcessStage.DECODE, 4), (1, 10, ProcessStage.PREFILL, 0)], False),
-        (15, 4, [(1, 10, ProcessStage.DECODE, 3), (1, 10, ProcessStage.PREFILL, 0)], False),
-        (15, 3, [(1, 10, ProcessStage.DECODE, 2), (1, 10, ProcessStage.PREFILL, 0)], False),
+        (15, 7, [(1, 9, ProcessStage.DECODE, 6), (1, 9, ProcessStage.PREFILL, 0)], True),
+        (15, 6, [(1, 9, ProcessStage.DECODE, 5), (1, 9, ProcessStage.PREFILL, 0)], True),
+        (15, 5, [(1, 9, ProcessStage.DECODE, 4), (1, 9, ProcessStage.PREFILL, 0)], True),
+        (15, 4, [(1, 9, ProcessStage.DECODE, 3), (1, 9, ProcessStage.PREFILL, 0)], False),
+        (15, 3, [(1, 9, ProcessStage.DECODE, 2), (1, 9, ProcessStage.PREFILL, 0)], False),
+        (15, 2, [(1, 9, ProcessStage.DECODE, 1), (1, 9, ProcessStage.PREFILL, 0)], False),
     ]
 )
 def test_is_valid_step_with_predict(total_vram, used, requests, expected):
