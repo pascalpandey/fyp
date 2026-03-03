@@ -6,7 +6,7 @@ from request import Request
 
 
 class ShareGPTDatasetLoader:
-    def __init__(self, path, size, conversation_rate, prompt_rate, sigma, max_context_window):
+    def __init__(self, path, size, conversation_rate, prompt_rate, sigma, max_conversation_token_count):
         self._path = path
         self._size = size
 
@@ -19,11 +19,11 @@ class ShareGPTDatasetLoader:
         self._sigma = sigma
         self._prompt_rate = prompt_rate
         self._encoding = tiktoken.encoding_for_model("gpt-4")
-        self._max_context_window = max_context_window
+        self._max_conversation_token_count = max_conversation_token_count
 
     def _get_predicted_length(self, actual_response_len):
         noise = self._rng.normal(0, self._sigma)
-        return int(actual_response_len * np.exp(noise))
+        return max(1, int(actual_response_len * np.exp(noise)))
 
     def load(self):
         dataset = Dataset()
@@ -64,11 +64,13 @@ class ShareGPTDatasetLoader:
                         # some conversations start with gpt, in that case append the first
                         # gpt message to the first prompt
                         if j != 0:
+                            if token_count + prompt_len > self._max_conversation_token_count:
+                                break
                             predicted_response_len = self._get_predicted_length(
                                 token_count)
                             data = Request(
                                 f"Conv {i}, Req {prompt_idx}",
-                                min(self._max_context_window, prompt_len),
+                                prompt_len,
                                 token_count,
                                 prompt_times[prompt_idx],
                                 predicted_response_len

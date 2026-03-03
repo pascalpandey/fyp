@@ -1,30 +1,32 @@
-import numpy as np
+class ViolationCounter:
+    def __init__(self, predicted_response_len):
+        self.violation_count = 0
+        self.initial_predicted_response_len = predicted_response_len
+        self.adjusted_predicted_response_len = predicted_response_len
+    
+    def check_violation(self, current_decode_progress):
+        if current_decode_progress == self.adjusted_predicted_response_len:
+            self.violation_count += 1
+            self.adjusted_predicted_response_len += (0.2 ** self.violation_count) * self.initial_predicted_response_len
+        return self.adjusted_predicted_response_len
 
 
-class FCFSDynamicBatchPredictAdjAvgScheduler:
+class FCFSDynamicBatchPredictAdjOverScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
         self._gpu_view = initial_gpu_view
-        self._prediction_adjustment = 0
-        self._previous_requests = {}
-        self._errors = []
+        self.pred_adjustment = {}
 
     def queue(self, request_views):
         self._queue.extend(request_views)
     
     def update_gpu_view(self, gpu_view):
         self._gpu_view = gpu_view
-        scheduled_request_ids = set([request_view.id for request_view in self._gpu_view.request_views])
-        for req_id in self._previous_requests:
-            if req_id not in scheduled_request_ids:
-                decode_progress, predicted_response_len = self._previous_requests[req_id]
-                self._errors.append(decode_progress + 1 - predicted_response_len)
-                self._prediction_adjustment = int(np.mean(self._errors))
-        self._previous_requests = {}
         for request_view in self._gpu_view.request_views:
-            self._previous_requests[request_view.id] = (request_view.decode_progress, request_view.predicted_response_len)
-            request_view.predicted_response_len = max(request_view.decode_progress + 1, request_view.predicted_response_len + self._prediction_adjustment)
-
+            if request_view.id not in self.pred_adjustment:
+                self.pred_adjustment[request_view.id] = ViolationCounter(request_view.predicted_response_len)
+            else:
+                request_view.predicted_response_len = self.pred_adjustment[request_view.id].check_violation(request_view.decode_progress)
 
     def decide(self):
         # wait if queue and GPU is empty
@@ -46,8 +48,4 @@ class FCFSDynamicBatchPredictAdjAvgScheduler:
             request_view = self._gpu_view.preempt_top()
             preempted_request_ids.append(request_view.id)
             self._queue.insert(0, request_view)
-        
-        for req_id in preempted_request_ids:
-            del self._previous_requests[req_id]
-
         return 0, scheduled_request_ids, preempted_request_ids

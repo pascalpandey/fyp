@@ -36,10 +36,14 @@ def _calc_end_step_vram_update(request):
     if request.process_stage == ProcessStage.PREFILL:
         return VRAMUpdateType.ALLOCATE, request._prompt_len
     elif request.process_stage == ProcessStage.DECODE:
-        # because RequestView doesn't have response_len field and RequestView will never be in COMPLETE state
-        if isinstance(request, RequestView) or request._decode_progress + 1 != request._response_len:
-            return VRAMUpdateType.ALLOCATE, 1, None
-        return VRAMUpdateType.ALLOCATE_THEN_FREE, 1, request._prompt_len + request._response_len
+        if isinstance(request, RequestView):
+            if request._decode_progress + 1 != request.predicted_response_len:
+                return VRAMUpdateType.ALLOCATE, 1, None
+            return VRAMUpdateType.ALLOCATE_THEN_FREE, 1, request._prompt_len + request.predicted_response_len
+        elif isinstance(request, Request):
+            if request._decode_progress + 1 != request._response_len:
+                return VRAMUpdateType.ALLOCATE, 1, None
+            return VRAMUpdateType.ALLOCATE_THEN_FREE, 1, request._prompt_len + request._response_len
     else:
         raise Exception(
             "calc_end_step_vram_update: request is not in PREFILL or DECODE state")
@@ -116,6 +120,8 @@ class Request:
             raise Exception(
                 f"Request.preempt: cannot preempt from {self.state}")
         self.state = RequestState.READY # no need to set process_stage and decode_progress as it is handled in .step()
+        self.process_stage = None
+        self._decode_progress = 0
         self.add_process_history(timestamp, ProcessHistoryState.READY)
 
     def add_process_history(self, timestamp, process_history_state):
@@ -149,6 +155,9 @@ class RequestView:
         # process_stage can be None, so use `if self.process_stage == ProcessStage.DECODE`
         return max(self.predicted_response_len - self.decode_progress + (0 if self.process_stage == ProcessStage.DECODE else 1), 1)
 
+    def get_total_processing_time(self):
+        return self.predicted_response_len + 1
+
     def get_vram_usage_after_time(self, time):
         if time < 0:
             raise Exception(f"RequestView.get_vram_usage_after_time: time is negative")
@@ -156,7 +165,9 @@ class RequestView:
             # free only the currently used VRAM when the request finishes
             # requests that finish at the same timestep only frees usable memory at the timestep after that
             return VRAMUpdateType.FREE, self.get_current_vram_usage()
-        if self.process_stage == ProcessStage.PREFILL:
+        # if not scheduled yet, process_stage is None, assume its the same as prefill so the function is usable
+        # for not yet scheduled requests
+        if self.process_stage == ProcessStage.PREFILL or self.process_stage is None:
             return VRAMUpdateType.ALLOCATE, self._prompt_len + time - 1
         return VRAMUpdateType.ALLOCATE, time
     
@@ -171,6 +182,21 @@ class RequestView:
         self.process_stage = None
         self._decode_progress = 0
         return reclaimed_vram
+    
+    def step(self):
+        result = self.get_end_step_vram_update()
+
+        if self.process_stage == ProcessStage.PREFILL:
+            self.process_stage = ProcessStage.DECODE
+            self._decode_progress = 0
+
+        elif self.process_stage == ProcessStage.DECODE:
+            self._decode_progress += 1
+
+        return result
+
+    def get_current_scheduled_age(self):
+        return self._decode_progress + (1 if self.process_stage == ProcessStage.DECODE else 0)
 
     # public access aliases, needed because common utility functions with Request uses
     # _prompt_len and _decode_progress

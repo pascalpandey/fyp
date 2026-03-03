@@ -10,6 +10,9 @@ class Simulator:
             if self._t > 0:
                 completed_requests = self._gpu.end_previous_step(self._t)
                 self._dataset.increment_completed_requests(len(completed_requests))
+                # if self._dataset._completed_requests_count > 0 and self._dataset._completed_requests_count % 10000 == 0:
+                # if completed_requests:
+                #     print(self._dataset._completed_requests_count)
                 if self._dataset.completed_all_requests():
                     break
         

@@ -21,3 +21,15 @@ to test
 ```bash
 PYTHONPATH=. pytest -s
 ```
+
+to visualize dataset
+
+```bash
+python -m scripts.visualize_dataset
+```
+
+to generate graph from JSON
+
+```bash
+python -m scripts.generate_graph
+```

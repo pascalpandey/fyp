@@ -1,5 +1,6 @@
 import heapq
 import copy
+import numpy as np
 from sortedcontainers import SortedList
 from request import ProcessStage
 
@@ -21,8 +22,6 @@ class RequestHeapItem:
 class SortedListItem:
     def __init__(self, req):
         object.__setattr__(self, "req", req)
-        preemption_benefit = self.predicted_response_len - 2 * self.decode_progress - (2 if self.process_stage == ProcessStage.DECODE else 0)
-        object.__setattr__(self.req, "preemption_benefit", preemption_benefit)
 
     def __getattr__(self, name):
         return getattr(self.req, name)
@@ -34,13 +33,13 @@ class SortedListItem:
         return self.get_remaining_processing_time() < other.get_remaining_processing_time()
 
 
-class SRPTDynamicBatchPredictAdjAvgScheduler:
+class SRPTDynamicBatchPredictScheduleDelayAdjIQRScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
-        self._prediction_adjustment = 0
         self._previous_requests = {}
-        self._completed_requests = 0
+        self._actual = []
         self.update_gpu_view(initial_gpu_view)
+        self._swap_count = 0
 
     def queue(self, request_views):
         for request_view in request_views:
@@ -52,13 +51,18 @@ class SRPTDynamicBatchPredictAdjAvgScheduler:
         for req_id in self._previous_requests:
             if req_id not in scheduled_request_ids:
                 decode_progress, predicted_response_len = self._previous_requests[req_id]
-                self._prediction_adjustment = (self._prediction_adjustment * self._completed_requests + (decode_progress + 1 - predicted_response_len)) // (self._completed_requests + 1)
-                self._completed_requests += 1
+                actual_len = decode_progress + 1
+                self._actual.append(actual_len)
         self._previous_requests = {}
         self._gpu_remaining_processing_time = SortedList([])
         for request_view in self._gpu_view.request_views:
             self._previous_requests[request_view.id] = (request_view.decode_progress, request_view.predicted_response_len)
-            request_view.predicted_response_len += self._prediction_adjustment
+            if self._actual:
+                q1, q3 = np.percentile(self._actual, [25, 75])
+                iqr = q3 - q1
+                if request_view.predicted_response_len < q1 - iqr or request_view.predicted_response_len > q3 + iqr:
+                    request_view.predicted_response_len = request_view.decode_progress + 1
+            request_view.predicted_response_len = max(request_view.predicted_response_len, request_view.decode_progress + 1)
             self._gpu_remaining_processing_time.add(SortedListItem(request_view))
 
     def decide(self):
@@ -82,33 +86,51 @@ class SRPTDynamicBatchPredictAdjAvgScheduler:
         for scheduled_request_view in scheduled_requests:
            self._gpu_remaining_processing_time.add(SortedListItem(scheduled_request_view))
         
-        # only preempt if:
-        # to_be_scheduled_request.predicted_response_len <
-        # to_be_preempted_request.predicted_response_len - 2 * to_be_preempted_request.decode_progress - 2
-
-        # try to schedule requests in the queue with remaining processing time less than the largest remaining processing time
-        # but also less than the preemption benefit of the preempted request
         preempted_request_ids = []
         while len(self._queue) > 0 and len(self._gpu_remaining_processing_time) > 0:
+            if not self._gpu_view.is_valid_step_with_predict():
+                break
+
             schedule_candidate_heap_item = self._queue[0]
+
+            schedule_delay = self._gpu_view.get_schedule_delay(schedule_candidate_heap_item)
+            if schedule_delay is None:
+                break
+            
             swap_idx = None
+            max_swap_value = 0
             for i in range(len(self._gpu_remaining_processing_time) - 1, -1, -1):
-                if schedule_candidate_heap_item.get_remaining_processing_time() >= self._gpu_remaining_processing_time[i].get_remaining_processing_time():
+                preempt_candidate = self._gpu_remaining_processing_time[i]
+                if preempt_candidate.get_remaining_processing_time() < schedule_candidate_heap_item.get_remaining_processing_time():
                     break
-                if schedule_candidate_heap_item.get_remaining_processing_time() < self._gpu_remaining_processing_time[i].preemption_benefit:
+                if not self._gpu_view.try_swap_with_predict(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req)):
+                    continue
+                if len(self._queue) > 1 and preempt_candidate.get_total_processing_time() > self._queue[1].get_remaining_processing_time():
+                    incoming_schedule_delay = self._gpu_view.try_swap_get_next_in_queue_schedule_delay(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req), copy.deepcopy(self._queue[1].req))
+                else:
+                    incoming_schedule_delay = self._gpu_view.try_swap_get_preempted_schedule_delay(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req))
+                preempt_candidate_order = 1
+                # for j in range(len(self._queue)):
+                #     if preempt_candidate.get_total_processing_time() > self._queue[j].get_remaining_processing_time():
+                #         preempt_candidate_order = j + 2
+                cur_swap_value = ((schedule_delay - incoming_schedule_delay) * preempt_candidate_order) - preempt_candidate.get_current_scheduled_age()
+                if cur_swap_value > max_swap_value:
+                    max_swap_value = cur_swap_value
                     swap_idx = i
-                    break
+                    # break
             
             if swap_idx is None:
                 break
 
-            preempt_candidate = self._gpu_remaining_processing_time[swap_idx].req
-            if not self._gpu_view.try_swap_with_predict(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req)):
-                break
+            self._swap_count += 1
+            # print(self._swap_count)
 
             preempted_request_sorted_list_item = self._gpu_remaining_processing_time.pop(swap_idx)
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
-            preempted_request_ids.append(preempted_request_sorted_list_item.id)
+            if preempted_request_sorted_list_item.id in scheduled_request_ids:
+                scheduled_request_ids.remove(preempted_request_sorted_list_item.id)
+            else:
+                preempted_request_ids.append(preempted_request_sorted_list_item.id)
             heapq.heappush(self._queue, RequestHeapItem(preempted_request_sorted_list_item.req))
 
             scheduled_request_heap_item = heapq.heappop(self._queue)
@@ -137,6 +159,7 @@ class SRPTDynamicBatchPredictAdjAvgScheduler:
             heapq.heappush(self._queue, RequestHeapItem(preempted_request_sorted_list_item.req))
         
         for req_id in preempted_request_ids:
-            del self._previous_requests[req_id]
+            if req_id in self._previous_requests:
+                del self._previous_requests[req_id]
 
         return 0, scheduled_request_ids, preempted_request_ids
