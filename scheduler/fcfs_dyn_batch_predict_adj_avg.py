@@ -19,11 +19,11 @@ class FCFSDynamicBatchPredictAdjAvgScheduler:
             if req_id not in scheduled_request_ids:
                 decode_progress, predicted_response_len = self._previous_requests[req_id]
                 self._errors.append(decode_progress + 1 - predicted_response_len)
-                self._prediction_adjustment = int(np.mean(self._errors))
+                self._prediction_adjustment = np.mean(self._errors)
         self._previous_requests = {}
         for request_view in self._gpu_view.request_views:
             self._previous_requests[request_view.id] = (request_view.decode_progress, request_view.predicted_response_len)
-            request_view.predicted_response_len = max(request_view.decode_progress + 1, request_view.predicted_response_len + self._prediction_adjustment)
+            request_view.predicted_response_len = max(request_view.decode_progress + 1, int(request_view.predicted_response_len + self._prediction_adjustment))
 
 
     def decide(self):

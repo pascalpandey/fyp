@@ -43,7 +43,7 @@ def generate_graph(json_path, output_dir):
         )
 
     plt.xlabel(x_name)
-    plt.ylabel("Average Latency")
+    plt.ylabel("Latency (time units)")
     plt.title(experiment_name)
     plt.legend(fontsize=7)
     plt.grid(True, linewidth=0.5, alpha=0.6)
@@ -54,6 +54,6 @@ def generate_graph(json_path, output_dir):
     print(f"Saved regenerated graph to {png_path}")
 
 if __name__ == "__main__":
-    json_path = 'results/Prompt Engineering Varied STDEV/final.json'
-    output_dir = 'results/Prompt Engineering Varied STDEV'
+    json_path = 'results/Prompt Engineering Varied VRAM Capacity/result_data.json'
+    output_dir = 'results/Prompt Engineering Varied VRAM Capacity'
     generate_graph(json_path, output_dir)

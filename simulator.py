@@ -12,7 +12,8 @@ class Simulator:
                 self._dataset.increment_completed_requests(len(completed_requests))
                 # if self._dataset._completed_requests_count > 0 and self._dataset._completed_requests_count % 10000 == 0:
                 # if completed_requests:
-                #     print(self._dataset._completed_requests_count)
+                #     if self._dataset._completed_requests_count % 5000:
+                #         print(self._dataset._completed_requests_count)
                 if self._dataset.completed_all_requests():
                     break
         

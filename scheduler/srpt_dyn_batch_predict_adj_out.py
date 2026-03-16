@@ -35,7 +35,7 @@ class SortedListItem:
         return self.get_remaining_processing_time() < other.get_remaining_processing_time()
 
 
-class SRPTDynamicBatchPredictAdjIQRScheduler:
+class SRPTDynamicBatchPredictAdjOutScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
         self._previous_requests = {}
@@ -108,10 +108,7 @@ class SRPTDynamicBatchPredictAdjIQRScheduler:
 
             preempted_request_sorted_list_item = self._gpu_remaining_processing_time.pop(swap_idx)
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
-            if preempted_request_sorted_list_item.id in scheduled_request_ids:
-                scheduled_request_ids.remove(preempted_request_sorted_list_item.id)
-            else:
-                preempted_request_ids.append(preempted_request_sorted_list_item.id)
+            preempted_request_ids.append(preempted_request_sorted_list_item.id)
             heapq.heappush(self._queue, RequestHeapItem(preempted_request_sorted_list_item.req))
 
             scheduled_request_heap_item = heapq.heappop(self._queue)
@@ -140,7 +137,6 @@ class SRPTDynamicBatchPredictAdjIQRScheduler:
             heapq.heappush(self._queue, RequestHeapItem(preempted_request_sorted_list_item.req))
         
         for req_id in preempted_request_ids:
-            if req_id in self._previous_requests:
-                del self._previous_requests[req_id]
+            del self._previous_requests[req_id]
 
         return 0, scheduled_request_ids, preempted_request_ids

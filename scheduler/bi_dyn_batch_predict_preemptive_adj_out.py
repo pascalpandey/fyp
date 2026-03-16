@@ -8,7 +8,7 @@ from request import ProcessStage
 class RequestPriority:
     def __init__(self, req):
         object.__setattr__(self, "req", req)
-        priority = self.prompt_len + self.get_remaining_processing_time()
+        priority = self.prompt_len + self.predicted_response_len - 2 * self.decode_progress - (2 if self.process_stage == ProcessStage.DECODE else 0)
         object.__setattr__(self.req, "priority", priority)
 
     def __getattr__(self, name):
@@ -21,14 +21,12 @@ class RequestPriority:
         return self.priority < other.priority
 
 
-class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjIQRScheduler:
+class BicriteriaDynamicBatchPredictPreemptiveAdjOutScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
         self._previous_requests = {}
-        self._completed_requests = 0
         self._actual = []
         self.update_gpu_view(initial_gpu_view)
-        self._swap_count = 0
 
     def queue(self, request_views):
         for request_view in request_views:
@@ -55,8 +53,6 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjIQRScheduler:
             self._gpu_request_priority.add(RequestPriority(request_view))
 
     def decide(self):
-        # print('outside req prio', [x.id for x in self._gpu_request_priority])
-        # print(self._previous_requests)
         # wait if queue and GPU is empty
         if len(self._queue) == 0 and len(self._gpu_view.request_views) == 0:
             return 1, None, None
@@ -80,45 +76,15 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjIQRScheduler:
         # only preempt if to_be_scheduled.request_priority < to_be_preempted.request_priority
         preempted_request_ids = []
         while len(self._queue) > 0 and len(self._gpu_request_priority) > 0:
-            if not self._gpu_view.is_valid_step_with_predict():
-                break
-
             schedule_candidate_heap_item = self._queue[0]
-
-            schedule_delay = self._gpu_view.get_schedule_delay(schedule_candidate_heap_item)
-            if schedule_delay is None:
+            if schedule_candidate_heap_item.priority >= self._gpu_request_priority[-1].priority:
                 break
             
-            swap_idx = None
-            max_swap_value = 0
-            # print([x.priority for x in self._gpu_request_priority])
-            for i in range(len(self._gpu_request_priority) - 1, -1, -1):
-                preempt_candidate = self._gpu_request_priority[i]
-                if preempt_candidate.priority <= schedule_candidate_heap_item.priority:
-                    break
-                if not self._gpu_view.try_swap_with_predict(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req)):
-                    continue
-                if len(self._queue) > 1 and preempt_candidate.get_total_processing_time() > self._queue[1].get_remaining_processing_time():
-                    incoming_schedule_delay = self._gpu_view.try_swap_get_next_in_queue_schedule_delay(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req), copy.deepcopy(self._queue[1].req))
-                else:
-                    incoming_schedule_delay = self._gpu_view.try_swap_get_preempted_schedule_delay(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req))
-                preempt_candidate_order = 1
-                # for j in range(len(self._queue)):
-                #     if preempt_candidate.get_total_processing_time() > self._queue[j].get_remaining_processing_time():
-                #         preempt_candidate_order = j + 2
-                cur_swap_value = ((schedule_delay - incoming_schedule_delay) * preempt_candidate_order) - preempt_candidate.get_current_scheduled_age()
-                if cur_swap_value > max_swap_value:
-                    max_swap_value = cur_swap_value
-                    swap_idx = i
-                    # break
-            
-            if swap_idx is None:
+            preempt_candidate = self._gpu_request_priority[-1].req
+            if not self._gpu_view.try_swap_with_predict(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req)):
                 break
 
-            self._swap_count += 1
-            
-            # print('inside req prio', [x.id for x in self._gpu_request_priority])
-            preempted_request_sorted_list_item = self._gpu_request_priority.pop(swap_idx)
+            preempted_request_sorted_list_item = self._gpu_request_priority.pop()
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
             preempted_request_ids.append(preempted_request_sorted_list_item.id)
             heapq.heappush(self._queue, RequestPriority(preempted_request_sorted_list_item.req))
@@ -127,7 +93,6 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjIQRScheduler:
             self._gpu_view.schedule(scheduled_request_heap_item.req)
             scheduled_request_ids.append(scheduled_request_heap_item.id)
             self._gpu_request_priority.add(RequestPriority(scheduled_request_heap_item.req))
-        # print('preempted_req_id', preempted_request_ids)
         
         scheduled_requests = []
         while self._gpu_view.is_valid_step_with_predict() and len(self._queue) > 0:
@@ -143,13 +108,13 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjIQRScheduler:
         for scheduled_request_view in scheduled_requests:
            self._gpu_request_priority.add(RequestPriority(scheduled_request_view))
 
+        # will still need to preempt if actual step is invalid
         while not self._gpu_view.is_valid_step_with_predict():
             preempted_request_sorted_list_item = self._gpu_request_priority.pop()
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
             preempted_request_ids.append(preempted_request_sorted_list_item.id)
             heapq.heappush(self._queue, RequestPriority(preempted_request_sorted_list_item.req))
         
-        # print('after:',self._previous_requests)
         for req_id in preempted_request_ids:
             del self._previous_requests[req_id]
         

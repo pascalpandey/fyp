@@ -55,7 +55,7 @@ class ShareGPTDatasetLoader:
                     # as we assume all responses already have an <|endoftext|> token at the end which is accounted by the simulator
                     if "<|endoftext|>" in message['value']:
                         token_count -= 1
-                    if source == 'human':
+                    if source == 'human' or source=='user':
                         prompt_len += token_count
                     elif source == 'gpt':
                         # ignore if no response from GPT
@@ -68,6 +68,8 @@ class ShareGPTDatasetLoader:
                                 break
                             predicted_response_len = self._get_predicted_length(
                                 token_count)
+                            if prompt_len == 0:
+                                prompt_len += 1
                             data = Request(
                                 f"Conv {i}, Req {prompt_idx}",
                                 prompt_len,
@@ -78,4 +80,6 @@ class ShareGPTDatasetLoader:
                             dataset.add(data)
                             prompt_idx += 1
                         prompt_len += token_count
+        print(len(dataset._requests))
+        print(max([x.predicted_response_len + x._prompt_len for x in dataset._requests.values()]))
         return dataset

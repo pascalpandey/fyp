@@ -15,7 +15,7 @@ class RequestHeapItem:
         return self.predicted_response_len < other.predicted_response_len
 
 
-class SJFDynamicBatchPredictAdjIQRScheduler:
+class SJFDynamicBatchPredictAdjOutScheduler:
     def __init__(self, initial_gpu_view):
         self._queue = []
         self._gpu_view = initial_gpu_view
