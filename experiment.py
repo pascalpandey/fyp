@@ -62,10 +62,10 @@ PROMPT_ENGINEERING_DEFAULT_VRAM_SLOTS = 150
 
 SHAREGPT_DEFAULT_DATA_PATH = './data/ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json'
 SHAREGPT_DEFAULT_MAX_CONVERSATION_COUNT = 94145  # max is 94145
-SHAREGPT_DEFAULT_CONVERSATION_RATE = 15 # 10
-SHAREGPT_DEFAULT_PROMPT_RATE = 20 # 15
-SHAREGPT_DEFAULT_PREDICTED_LEN_STDEV = 0.01
-SHAREGPT_DEFAULT_VRAM_SLOTS = 450 # 350
+SHAREGPT_DEFAULT_CONVERSATION_RATE = 15
+SHAREGPT_DEFAULT_PROMPT_RATE = 20
+SHAREGPT_DEFAULT_PREDICTED_LEN_STDEV = 0.025
+SHAREGPT_DEFAULT_VRAM_SLOTS = 450
 SHAREGPT_DEFAULT_MAX_CONVERSATION_TOKEN_COUNT = 100
 
 DATASET_DEFAULT_PARAMETERS_LIST = [
@@ -177,33 +177,33 @@ class Experiment:
 
 
 # ============================================================================
-# PROMPT ENGINEERING VARIED SLOT STDEV=0.1 EXPERIMENT
+# PROMPT ENGINEERING VARIED SLOTS EXPERIMENT
 # ============================================================================
 prompt_engineering_varied_slots = Experiment(
     "Prompt Engineering Varied VRAM Capacity",
     save_experiment_results=True,
     schedulers=[
-        "FCFS Non-Batch",
-        "FCFS Static Batch",
-        # "FCFS Dynamic Batch",
+        # "FCFS Non-Batch",
+        # "FCFS Static Batch",
+        "FCFS Dynamic Batch",
         # "FCFS Dynamic Batch Predict",
         # "FCFS Dynamic Batch Predict Overestimation Adjustor",
         # "FCFS Dynamic Batch Predict Average Adjustor",
-        # "FCFS Dynamic Batch Predict Outlier Adjustor",
+        "FCFS Dynamic Batch Predict Outlier Adjustor",
         # "SJF Non-Batch",
         # "SJF Dynamic Batch",
         # "SJF Dynamic Batch Predict",
         # "SJF Dynamic Batch Predict Overestimation Adjustor",
-        # "SJF Dynamic Batch Predict Outlier Adjustor",
+        "SJF Dynamic Batch Predict Outlier Adjustor",
         # "SRPT Dynamic Batch Predict",
         # "SRPT Dynamic Batch Predict Overestimation Adjustor",
         # "SRPT Dynamic Batch Predict Outlier Adjustor",
-        # "SRPT Dynamic Batch Predict Schedule Delay Outlier Adjustor",
+        "SRPT Dynamic Batch Predict Schedule Delay Outlier Adjustor",
         # "Bicriteria Dynamic Batch Predict Preemptive",
         # "Bicriteria Dynamic Batch Predict Non-Preemptive",
         # "Bicriteria Dynamic Batch Predict Preemptive Overestimation Adjustor",
         # "Bicriteria Dynamic Batch Predict Preemptive Outlier Adjustor",
-        # "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
+        "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
     ],
     datasets=[],
     visualization_x_axis={"vram_slots": []}
@@ -227,7 +227,7 @@ for i in range(5):
 
 
 # ============================================================================
-# SHAREGPT VARIED SLOTS STDEV=0.1 EXPERIMENT
+# SHAREGPT VARIED SLOTS EXPERIMENT
 # ============================================================================
 sharegpt_varied_slots = Experiment(
     "ShareGPT Varied VRAM Capacity",
@@ -287,11 +287,11 @@ prompt_engineering_varied_slots_perfect = Experiment(
     schedulers=[
         # "FCFS Non-Batch",
         # "FCFS Static Batch",
-        "FCFS Dynamic Batch",
+        # "FCFS Dynamic Batch",
         # "FCFS Dynamic Batch Predict",
         # "FCFS Dynamic Batch Predict Overestimation Adjustor",
         # "FCFS Dynamic Batch Predict Average Adjustor",
-        "FCFS Dynamic Batch Predict Outlier Adjustor",
+        # "FCFS Dynamic Batch Predict Outlier Adjustor",
         # "SJF Non-Batch",
         # "SJF Dynamic Batch",
         # "SJF Dynamic Batch Predict",
@@ -305,7 +305,7 @@ prompt_engineering_varied_slots_perfect = Experiment(
         # "Bicriteria Dynamic Batch Predict Non-Preemptive",
         # "Bicriteria Dynamic Batch Predict Preemptive Overestimation Adjustor",
         # "Bicriteria Dynamic Batch Predict Preemptive Outlier Adjustor",
-        "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
+        # "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
     ],
     datasets=[],
     visualization_x_axis={"vram_slots": []}
@@ -340,7 +340,7 @@ sharegpt_varied_slots_perfect = Experiment(
         # "FCFS Dynamic Batch Predict",
         # "FCFS Dynamic Batch Predict Overestimation Adjustor",
         # "FCFS Dynamic Batch Predict Average Adjustor",
-        "FCFS Dynamic Batch Predict Outlier Adjustor",
+        # "FCFS Dynamic Batch Predict Outlier Adjustor",
         # "SJF Non-Batch",
         # "SJF Dynamic Batch",
         # "SJF Dynamic Batch Predict",
@@ -354,7 +354,7 @@ sharegpt_varied_slots_perfect = Experiment(
         # "Bicriteria Dynamic Batch Predict Non-Preemptive",
         # "Bicriteria Dynamic Batch Predict Preemptive Overestimation Adjustor",
         # "Bicriteria Dynamic Batch Predict Preemptive Outlier Adjustor",
-        "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
+        # "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
     ],
     datasets=[],
     visualization_x_axis={"vram_slots": []}
@@ -391,7 +391,7 @@ prompt_engineering_varied_slots_perfect_fixed = Experiment(
         # "FCFS Dynamic Batch Predict",
         # "FCFS Dynamic Batch Predict Overestimation Adjustor",
         # "FCFS Dynamic Batch Predict Average Adjustor",
-        "FCFS Dynamic Batch Predict Outlier Adjustor",
+        # "FCFS Dynamic Batch Predict Outlier Adjustor",
         # "SJF Non-Batch",
         # "SJF Dynamic Batch",
         # "SJF Dynamic Batch Predict",
@@ -405,7 +405,7 @@ prompt_engineering_varied_slots_perfect_fixed = Experiment(
         # "Bicriteria Dynamic Batch Predict Non-Preemptive",
         # "Bicriteria Dynamic Batch Predict Preemptive Overestimation Adjustor",
         # "Bicriteria Dynamic Batch Predict Preemptive Outlier Adjustor",
-        "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
+        # "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
     ],
     datasets=[],
     visualization_x_axis={"vram_slots": []}
@@ -482,7 +482,7 @@ prompt_engineering_varied_stdev = Experiment(
     schedulers=[
         # "FCFS Non-Batch",
         # "FCFS Static Batch",
-        # "FCFS Dynamic Batch",
+        "FCFS Dynamic Batch",
         # "FCFS Dynamic Batch Predict",
         # "FCFS Dynamic Batch Predict Overestimation Adjustor",
         # "FCFS Dynamic Batch Predict Average Adjustor",
@@ -491,16 +491,16 @@ prompt_engineering_varied_stdev = Experiment(
         # "SJF Dynamic Batch",
         # "SJF Dynamic Batch Predict",
         # "SJF Dynamic Batch Predict Overestimation Adjustor",
-        # "SJF Dynamic Batch Predict Outlier Adjustor",
+        "SJF Dynamic Batch Predict Outlier Adjustor",
         # "SRPT Dynamic Batch Predict",
         # "SRPT Dynamic Batch Predict Overestimation Adjustor",
         # "SRPT Dynamic Batch Predict Outlier Adjustor",
-        # "SRPT Dynamic Batch Predict Schedule Delay Outlier Adjustor",
+        "SRPT Dynamic Batch Predict Schedule Delay Outlier Adjustor",
         # "Bicriteria Dynamic Batch Predict Preemptive",
         # "Bicriteria Dynamic Batch Predict Non-Preemptive",
         # "Bicriteria Dynamic Batch Predict Preemptive Overestimation Adjustor",
         # "Bicriteria Dynamic Batch Predict Preemptive Outlier Adjustor",
-        # "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
+        "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
     ],
     datasets=[],
     visualization_x_axis={"stdev": []}
@@ -555,7 +555,7 @@ sharegpt_varied_stdev = Experiment(
     visualization_x_axis={"stdev": []}
 )
 for i in range(9):
-    stdev = i * 0.0125
+    stdev = i * 0.005
     sharegpt_varied_stdev.datasets.append(
         (
             f"sharegpt_{stdev:.4f}_stdev",
@@ -623,6 +623,59 @@ for i in range(5):
     prompt_engineering_varied_rate.visualization_x_axis["Request Rate"].append(request_rate)
 
 
+# ============================================================================
+# SHAREGPT VARIED REQUEST RATE EXPERIMENT
+# ============================================================================
+sharegpt_varied_rate = Experiment(
+    "ShareGPT Varied Request Rate",
+    save_experiment_results=True,
+    schedulers=[
+        # "FCFS Non-Batch",
+        # "FCFS Static Batch",
+        "FCFS Dynamic Batch",
+        # "FCFS Dynamic Batch Predict",
+        # "FCFS Dynamic Batch Predict Overestimation Adjustor",
+        # "FCFS Dynamic Batch Predict Average Adjustor",
+        "FCFS Dynamic Batch Predict Outlier Adjustor",
+        # "SJF Non-Batch",
+        # "SJF Dynamic Batch",
+        # "SJF Dynamic Batch Predict",
+        # "SJF Dynamic Batch Predict Overestimation Adjustor",
+        "SJF Dynamic Batch Predict Outlier Adjustor",
+        # "SRPT Dynamic Batch Predict",
+        # "SRPT Dynamic Batch Predict Overestimation Adjustor",
+        # "SRPT Dynamic Batch Predict Outlier Adjustor",
+        "SRPT Dynamic Batch Predict Schedule Delay Outlier Adjustor",
+        # "Bicriteria Dynamic Batch Predict Preemptive",
+        # "Bicriteria Dynamic Batch Predict Non-Preemptive",
+        # "Bicriteria Dynamic Batch Predict Preemptive Overestimation Adjustor",
+        # "Bicriteria Dynamic Batch Predict Preemptive Outlier Adjustor",
+        "Bicriteria Dynamic Batch Predict Schedule Delay Preemptive Outlier Adjustor"
+    ],
+    datasets=[],
+    visualization_x_axis={"Prompt Rate": []}
+)
+for i in range(5):
+    step = 1
+    prompt_rate = SHAREGPT_DEFAULT_PROMPT_RATE - 2 * step + i * step
+    conversation_rate = prompt_rate * SHAREGPT_DEFAULT_CONVERSATION_RATE / SHAREGPT_DEFAULT_PROMPT_RATE 
+    sharegpt_varied_rate.datasets.append(
+        (
+            f"sharegpt_{prompt_rate:.4f}_prompt_rate_{conversation_rate:.4f}_conv_rate",
+            ShareGPTDatasetLoader(
+                SHAREGPT_DEFAULT_DATA_PATH,
+                SHAREGPT_DEFAULT_MAX_CONVERSATION_COUNT,
+                conversation_rate,
+                prompt_rate,
+                SHAREGPT_DEFAULT_PREDICTED_LEN_STDEV,
+                SHAREGPT_DEFAULT_MAX_CONVERSATION_TOKEN_COUNT
+            ),
+            SHAREGPT_DEFAULT_VRAM_SLOTS
+        )
+    )
+    sharegpt_varied_rate.visualization_x_axis["Prompt Rate"].append(prompt_rate)
+
+
 
 # ============================================================================
 # DEFAULT EXPERIMENT
@@ -663,18 +716,18 @@ default = Experiment(
             ),
             PROMPT_ENGINEERING_DEFAULT_VRAM_SLOTS
         ),
-        # (
-        #     "sharegpt",
-        #     ShareGPTDatasetLoader(
-        #         SHAREGPT_DEFAULT_DATA_PATH,
-        #         SHAREGPT_DEFAULT_MAX_CONVERSATION_COUNT,
-        #         SHAREGPT_DEFAULT_CONVERSATION_RATE,
-        #         SHAREGPT_DEFAULT_PROMPT_RATE,
-        #         SHAREGPT_DEFAULT_PREDICTED_LEN_STDEV,
-        #         SHAREGPT_DEFAULT_MAX_CONVERSATION_TOKEN_COUNT
-        #     ),
-        #     SHAREGPT_DEFAULT_VRAM_SLOTS
-        # )
+        (
+            "sharegpt",
+            ShareGPTDatasetLoader(
+                SHAREGPT_DEFAULT_DATA_PATH,
+                SHAREGPT_DEFAULT_MAX_CONVERSATION_COUNT,
+                SHAREGPT_DEFAULT_CONVERSATION_RATE,
+                SHAREGPT_DEFAULT_PROMPT_RATE,
+                SHAREGPT_DEFAULT_PREDICTED_LEN_STDEV,
+                SHAREGPT_DEFAULT_MAX_CONVERSATION_TOKEN_COUNT
+            ),
+            SHAREGPT_DEFAULT_VRAM_SLOTS
+        )
     ],
     visualization_x_axis=None
 )
@@ -685,9 +738,10 @@ EXPERIMENTS = [
     # prompt_engineering_varied_slots_perfect,
     # sharegpt_varied_slots_perfect,
     # prompt_engineering_varied_slots,
-    sharegpt_varied_slots,
+    # sharegpt_varied_slots,
     # prompt_engineering_varied_stdev,
-    sharegpt_varied_stdev,
+    # sharegpt_varied_stdev,
     # prompt_engineering_varied_rate,
+    # sharegpt_varied_rate,
     # test_dataset,
 ]

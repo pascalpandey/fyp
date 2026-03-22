@@ -110,7 +110,6 @@ class BicriteriaDynamicBatchPredictPreemptiveAdjOverScheduler:
         for scheduled_request_view in scheduled_requests:
            self._gpu_request_priority.add(RequestPriority(scheduled_request_view))
 
-        # will still need to preempt if actual step is invalid
         while not self._gpu_view.is_valid_step_with_predict():
             preempted_request_sorted_list_item = self._gpu_request_priority.pop()
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)

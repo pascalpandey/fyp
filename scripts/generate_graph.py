@@ -45,7 +45,7 @@ def generate_graph(json_path, output_dir):
     plt.xlabel(x_name)
     plt.ylabel("Latency (time units)")
     plt.title(experiment_name)
-    plt.legend(fontsize=7)
+    plt.legend(fontsize=6)
     plt.grid(True, linewidth=0.5, alpha=0.6)
 
     plt.savefig(png_path, bbox_inches="tight")
@@ -54,6 +54,6 @@ def generate_graph(json_path, output_dir):
     print(f"Saved regenerated graph to {png_path}")
 
 if __name__ == "__main__":
-    json_path = 'results/Prompt Engineering Varied VRAM Capacity/result_data.json'
-    output_dir = 'results/Prompt Engineering Varied VRAM Capacity'
+    json_path = 'results/ShareGPT Varied STDEV/result_data.json'
+    output_dir = 'results/ShareGPT Varied STDEV'
     generate_graph(json_path, output_dir)

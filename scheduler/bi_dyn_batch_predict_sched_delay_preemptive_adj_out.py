@@ -55,8 +55,6 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjOutScheduler:
             self._gpu_request_priority.add(RequestPriority(request_view))
 
     def decide(self):
-        # print('outside req prio', [x.id for x in self._gpu_request_priority])
-        # print(self._previous_requests)
         # wait if queue and GPU is empty
         if len(self._queue) == 0 and len(self._gpu_view.request_views) == 0:
             return 1, None, None
@@ -90,8 +88,6 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjOutScheduler:
                 break
             
             swap_idx = None
-            max_swap_value = 0
-            # print([x.priority for x in self._gpu_request_priority])
             for i in range(len(self._gpu_request_priority) - 1, -1, -1):
                 preempt_candidate = self._gpu_request_priority[i]
                 if preempt_candidate.priority <= schedule_candidate_heap_item.priority:
@@ -102,22 +98,13 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjOutScheduler:
                     incoming_schedule_delay = self._gpu_view.try_swap_get_next_in_queue_schedule_delay(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req), copy.deepcopy(self._queue[1].req))
                 else:
                     incoming_schedule_delay = self._gpu_view.try_swap_get_preempted_schedule_delay(preempt_candidate.id, copy.deepcopy(schedule_candidate_heap_item.req))
-                preempt_candidate_order = 1
-                # for j in range(len(self._queue)):
-                #     if preempt_candidate.get_total_processing_time() > self._queue[j].get_remaining_processing_time():
-                #         preempt_candidate_order = j + 2
-                cur_swap_value = ((schedule_delay - incoming_schedule_delay) * preempt_candidate_order) - preempt_candidate.get_current_scheduled_age()
-                if cur_swap_value > max_swap_value:
-                    max_swap_value = cur_swap_value
+                if schedule_delay - incoming_schedule_delay > preempt_candidate.get_current_scheduled_age():
                     swap_idx = i
                     break
             
             if swap_idx is None:
                 break
-
-            self._swap_count += 1
             
-            # print('inside req prio', [x.id for x in self._gpu_request_priority])
             preempted_request_sorted_list_item = self._gpu_request_priority.pop(swap_idx)
             self._gpu_view.preempt_request(preempted_request_sorted_list_item.id)
             preempted_request_ids.append(preempted_request_sorted_list_item.id)
@@ -127,7 +114,6 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjOutScheduler:
             self._gpu_view.schedule(scheduled_request_heap_item.req)
             scheduled_request_ids.append(scheduled_request_heap_item.id)
             self._gpu_request_priority.add(RequestPriority(scheduled_request_heap_item.req))
-        # print('preempted_req_id', preempted_request_ids)
         
         scheduled_requests = []
         while self._gpu_view.is_valid_step_with_predict() and len(self._queue) > 0:
@@ -149,7 +135,6 @@ class BicriteriaDynamicBatchPredictScheduleDelayPreemptiveAdjOutScheduler:
             preempted_request_ids.append(preempted_request_sorted_list_item.id)
             heapq.heappush(self._queue, RequestPriority(preempted_request_sorted_list_item.req))
         
-        # print('after:',self._previous_requests)
         for req_id in preempted_request_ids:
             del self._previous_requests[req_id]
         

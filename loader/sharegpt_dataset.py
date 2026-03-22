@@ -80,6 +80,4 @@ class ShareGPTDatasetLoader:
                             dataset.add(data)
                             prompt_idx += 1
                         prompt_len += token_count
-        print(len(dataset._requests))
-        print(max([x.predicted_response_len + x._prompt_len for x in dataset._requests.values()]))
         return dataset

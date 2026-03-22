@@ -3,7 +3,6 @@ import copy
 import pandas as pd
 import plotly.express as px
 from request import VRAMUpdateType, ProcessStage, ProcessHistoryState
-from collections import defaultdict
 
 
 class VRAM:
@@ -66,27 +65,6 @@ class GPU:
                     f"GPU.preempt_requests: request {preempted_request.id} not found in scheduled requests")
         self._vram.free(reclaimed_slots, timestamp)
 
-    # From Alladin paper page 4
-    # t_prefill = k1 * num_tokens_in_batch + c1
-    # t_decode = k2 * num_tokens_in_batch + c2 * size_of_batch + c3
-    # for now assume c1 = c2 = c3 = 0, k1 = k2 = 1
-    # def start_step(self, timestamp):
-    #     processing_time = 0
-    #     for request in self._requests:
-    #         if request.process_stage == ProcessStage.PREFILL:
-    #             request.add_process_history(timestamp, ProcessHistoryState.PREFILL)
-
-    #         elif request.process_stage == ProcessStage.DECODE:
-    #             request.add_process_history(timestamp, ProcessHistoryState.DECODE)
-
-    #         if request.process_stage == ProcessStage.PREFILL:
-    #             processing_time += request.get_start_step_processing_time()
-
-    #         if request.process_stage == ProcessStage.DECODE:
-    #             processing_time += request.get_start_step_processing_time()
-
-    #     return processing_time
-
     # Assume one time unit for both prefill and decode
     def start_step(self, timestamp):
         for request in self._requests:
@@ -102,7 +80,7 @@ class GPU:
 
     # From Alladin paper page 4
     # kv_size = h * num_tokens + j
-    # for now assume h = 1, j = 0
+    # assume h = 1, j = 0
     def end_previous_step(self, timestamp):
         vram_slots_allocated = 0
         vram_slots_freed = 0
@@ -236,9 +214,7 @@ class GPUView:
     def get_schedule_delay(self, schedule_request_view):
         gpu_view_copy = copy.deepcopy(self)
         max_remaining_time = max([x.get_remaining_processing_time() for x in self.request_views])
-        # print('======')
         for time in range(1, max_remaining_time+1):
-            # print(gpu_view_copy.is_valid_step_with_predict())
             if not gpu_view_copy.is_valid_step_with_predict():
                 raise Exception(f"GPUView.get_schedule_delay: must be called with GPU in a valid predicted state")
             gpu_view_copy.step()
@@ -246,20 +222,6 @@ class GPUView:
             if gpu_view_copy.is_valid_step_with_predict():
                 return time
             gpu_view_copy.preempt_request(schedule_request_view.id)
-
-        # remaining_times = sorted(list(set([x.get_remaining_processing_time() for x in self.request_views])))
-        # request_end_times = defaultdict(list)
-        # for request_view in self.request_views:
-        #     request_end_times[request_view.get_remaining_processing_time()].append(request_view)
-        # schedule_delay = remaining_times[0]
-        # for time in remaining_times:
-        #     for request_view in request_end_times[time]:
-        #         gpu_view_copy.preempt_request(request_view.id)
-        #     gpu_view_copy.schedule(schedule_request_view)
-        #     if not gpu_view_copy.is_valid_step_with_predict():
-        #         schedule_delay = time
-        #     gpu_view_copy.preempt_request(schedule_request_view.id)
-        # return schedule_delay
     
     def try_swap_get_preempted_schedule_delay(self, preempt_candidate_request_id, schedule_candidate_request_view):
         gpu_view_copy = copy.deepcopy(self)
@@ -286,16 +248,12 @@ class GPUView:
             elif request_view.process_stage == ProcessStage.DECODE:
                 # state stays SCHEDULED, process_stage stays DECODE or to COMPLETE
                 update_type, allocate_slots, free_slots = request_view.step()
-                # print(update_type, allocate_slots, free_slots)
                 if update_type == VRAMUpdateType.ALLOCATE:
                     vram_slots_allocated += allocate_slots
                     continuing_requests.append(request_view)
                 else:
                     vram_slots_allocated += allocate_slots
                     vram_slots_freed += free_slots
-        
-        # print(vram_slots_allocated, vram_slots_freed)
-        # print([(x.id, x.process_stage, x._decode_progress, x.predicted_response_len) for x in self.request_views])
 
         self.request_views = continuing_requests
 
@@ -305,10 +263,7 @@ class GPUView:
         self.remaining_vram_slots += vram_slots_freed
         self.remaining_vram_slots -= vram_slots_allocated
 
-        # print(self.used_vram_slots, self.remaining_vram_slots, self.total_vram_slots)
-
         if self.used_vram_slots > self.total_vram_slots:
-            # print(self.used_vram_slots, self.remaining_vram_slots, self.total_vram_slots)
             raise Exception("GPUView.step: VRAM used slots exceeds total")
         
         if self.remaining_vram_slots < 0:

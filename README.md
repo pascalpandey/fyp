@@ -13,6 +13,7 @@ pip install -r requirements.txt
 to run
 
 ```bash
+# first, uncomment the specific experiment from the EXPERIMENTS variable on experiment.py
 python3 main.py
 ```
 
@@ -31,5 +32,6 @@ python -m scripts.visualize_dataset
 to generate graph from JSON
 
 ```bash
+# first, modify the `json_path` and `output_dir` variables
 python -m scripts.generate_graph
 ```

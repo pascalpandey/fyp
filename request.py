@@ -78,15 +78,6 @@ class Request:
     def to_request_view(self):
         return RequestView(self)
 
-    # def get_start_step_processing_time(self):
-    #     if self.process_stage == ProcessStage.PREFILL:
-    #         return self._prompt_len
-    #     elif self.process_stage == ProcessStage.DECODE:
-    #         return self._prompt_len + self._decode_progress
-    #     else:
-    #         raise Exception(
-    #             "get_start_step_processing_time: request process_stage is not in PREFILL or DECODE")
-
     def step(self, timestamp=None):
         match self.state:
             case RequestState.PENDING:

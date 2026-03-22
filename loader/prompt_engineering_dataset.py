@@ -43,5 +43,4 @@ class PromptEngineeringDatasetLoader:
                     predicted_response_len
                 )
                 dataset.add(data)
-        print(max([x.predicted_response_len + x._prompt_len for x in dataset._requests.values()]))
         return dataset
