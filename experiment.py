@@ -554,8 +554,8 @@ sharegpt_varied_stdev = Experiment(
     datasets=[],
     visualization_x_axis={"stdev": []}
 )
-for i in range(9):
-    stdev = i * 0.005
+for i in range(5):
+    stdev = i * 0.01
     sharegpt_varied_stdev.datasets.append(
         (
             f"sharegpt_{stdev:.4f}_stdev",
@@ -740,7 +740,7 @@ EXPERIMENTS = [
     # prompt_engineering_varied_slots,
     # sharegpt_varied_slots,
     # prompt_engineering_varied_stdev,
-    # sharegpt_varied_stdev,
+    sharegpt_varied_stdev,
     # prompt_engineering_varied_rate,
     # sharegpt_varied_rate,
     # test_dataset,
